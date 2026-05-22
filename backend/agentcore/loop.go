@@ -137,6 +137,21 @@ func runInnerLoop(
 			llmCtx = cfg.TransformContext(llmCtx)
 		}
 
+		// ── Memory: inject recalled context before LLM call ───────────────
+		// RecallContext is called with the text of the last user message as
+		// the query.  The result is prepended as a Hidden system message so
+		// the model can leverage relevant memories without modifying history.
+		if cfg.Memory != nil {
+			query := lastUserText(conv.Messages)
+			if recalled := cfg.Memory.RecallContext(ctx, query); recalled != "" {
+				recallMsg := llmprovider.Message{
+					Role:    llmprovider.RoleSystem,
+					Content: []llmprovider.ContentPart{{Type: llmprovider.ContentTypeText, Text: recalled}},
+				}
+				llmCtx.Messages = append([]llmprovider.Message{recallMsg}, llmCtx.Messages...)
+			}
+		}
+
 		// ── Stream opts ───────────────────────────────────────────────────
 		streamOpts := cfg.StreamOpts
 		streamOpts.Reasoning = thinkingLevel
@@ -152,9 +167,14 @@ func runInnerLoop(
 			return false, loopErr
 		}
 
-		// Record cost in budget
-		if cfg.Budget != nil && usage != nil && usage.CostUSD > 0 {
-			_ = cfg.Budget.Consume(0, usage.CostUSD)
+		// Record cost and output-token consumption in budget
+		if cfg.Budget != nil && usage != nil {
+			if usage.CostUSD > 0 {
+				_ = cfg.Budget.Consume(0, usage.CostUSD)
+			}
+			if usage.OutputTokens > 0 {
+				_ = cfg.Budget.ConsumeOutputTokens(usage.OutputTokens)
+			}
 		}
 
 		assistantMsg.Timestamp = time.Now()
@@ -190,12 +210,13 @@ func runInnerLoop(
 			return true, nil // default: stop when no tools
 		}
 
-		toolResults, terminate, err := executeTools(ctx, cfg, conv, assistantMsg, ch)
+		toolResults, toolMods, terminate, err := executeTools(ctx, cfg, conv, assistantMsg, ch)
 		if err != nil {
 			return false, err
 		}
 
-		// Append tool result messages
+		// Append tool result messages first — this establishes the correct OpenAI
+		// message ordering: assistant(tool_calls) → tool(result) → [context patches].
 		for _, tr := range toolResults {
 			tr.Timestamp = time.Now()
 			conv.Messages = append(conv.Messages, tr)
@@ -205,6 +226,29 @@ func runInnerLoop(
 					"message": tr,
 				})
 			}
+		}
+
+		// Apply ContextModifiers AFTER tool results are appended so patches land
+		// in the correct position: ...tool_result → context_patches.
+		for _, tm := range toolMods {
+			if tm.modifier == nil {
+				continue
+			}
+			before := len(conv.Messages)
+			tm.modifier(conv)
+			if added := conv.Messages[before:]; len(added) > 0 {
+				patch := make([]AgentMessage, len(added))
+				copy(patch, added)
+				emit(ch, AgentEvent{Type: AgentEventContextPatch, Messages: patch})
+			}
+		}
+
+		// ── Memory: async sync turn after tool results ────────────────────
+		// SyncTurn is called in a goroutine to avoid blocking the main loop.
+		// It persists the completed user→assistant→tools turn for future recall.
+		if cfg.Memory != nil && len(conv.Messages) >= 2 {
+			userMsg, asstMsg := lastTurnMessages(conv.Messages)
+			go cfg.Memory.SyncTurn(ctx, userMsg, asstMsg)
 		}
 
 		// Steering messages (injected after tool results, before next LLM call)
@@ -283,9 +327,15 @@ func collectLLMTurn(
 			}
 
 		case llmprovider.StreamEventToolCallEnd:
+			// The provider sends the fully-accumulated args string in ArgsDelta on
+			// End (not just the final delta).  Reset and replace so that consumers
+			// of both Delta and End events don't double-count the content.
 			if ev.ToolCall != nil {
 				if acc, ok := toolCallsInProgress[ev.ToolCall.Index]; ok {
-					acc.argsBuilder.WriteString(ev.ToolCall.ArgsDelta)
+					if ev.ToolCall.ArgsDelta != "" {
+						acc.argsBuilder.Reset()
+						acc.argsBuilder.WriteString(ev.ToolCall.ArgsDelta)
+					}
 				}
 			}
 
@@ -324,22 +374,58 @@ type toolCallAccumulator struct {
 	argsBuilder strings.Builder
 }
 
+// effectiveModeForCall returns the execution mode for a single tool call.
+// The tool's own ExecutionMode field overrides the global config; falls back
+// to globalMode when the tool has no explicit preference.
+func effectiveModeForCall(tc llmprovider.ToolCall, conv *AgentContext, globalMode ToolExecutionMode) ToolExecutionMode {
+	for i := range conv.Tools {
+		if conv.Tools[i].Name == tc.Name && conv.Tools[i].ExecutionMode != "" {
+			return conv.Tools[i].ExecutionMode
+		}
+	}
+	return globalMode
+}
+
 // executeTools runs all tool calls from an assistant message.
 // Returns (toolResultMessages, terminate, error).
+//
+// Execution mode resolution (highest priority first):
+//  1. Individual AgentTool.ExecutionMode override
+//  2. AgentLoopConfig.ToolExecution global setting
+//  3. Default: sequential
+//
+// If global mode is parallel but any tool explicitly requests sequential,
+// the entire batch falls back to sequential to preserve source ordering.
+// toolModifier pairs a tool result message with its deferred ContextModifier.
+type toolModifier struct {
+	modifier func(*AgentContext) // nil if none
+}
+
 func executeTools(
 	ctx context.Context,
 	cfg AgentLoopConfig,
 	conv *AgentContext,
 	assistantMsg AgentMessage,
 	ch chan<- AgentEvent,
-) ([]AgentMessage, bool, error) {
+) ([]AgentMessage, []toolModifier, bool, error) {
 	mode := cfg.ToolExecution
 	if mode == "" {
 		mode = ToolExecutionSequential
 	}
 
 	if mode == ToolExecutionParallel && len(assistantMsg.ToolCalls) > 1 {
-		return executeToolsParallel(ctx, cfg, conv, assistantMsg, ch)
+		// Per-tool override: if any tool explicitly requires sequential execution,
+		// fall back to sequential for the whole batch to preserve source ordering.
+		allParallel := true
+		for _, tc := range assistantMsg.ToolCalls {
+			if effectiveModeForCall(tc, conv, mode) == ToolExecutionSequential {
+				allParallel = false
+				break
+			}
+		}
+		if allParallel {
+			return executeToolsParallel(ctx, cfg, conv, assistantMsg, ch)
+		}
 	}
 	return executeToolsSequential(ctx, cfg, conv, assistantMsg, ch)
 }
@@ -350,21 +436,23 @@ func executeToolsSequential(
 	conv *AgentContext,
 	assistantMsg AgentMessage,
 	ch chan<- AgentEvent,
-) ([]AgentMessage, bool, error) {
+) ([]AgentMessage, []toolModifier, bool, error) {
 	var results []AgentMessage
+	var modifiers []toolModifier
 	terminate := false
 
 	for _, tc := range assistantMsg.ToolCalls {
-		msg, term, err := executeSingleTool(ctx, cfg, conv, assistantMsg, tc, ch)
+		msg, mod, term, err := executeSingleTool(ctx, cfg, conv, assistantMsg, tc, ch)
 		if err != nil {
-			return nil, false, err
+			return nil, nil, false, err
 		}
 		results = append(results, msg)
+		modifiers = append(modifiers, mod)
 		if term {
 			terminate = true
 		}
 	}
-	return results, terminate, nil
+	return results, modifiers, terminate, nil
 }
 
 func executeToolsParallel(
@@ -373,10 +461,11 @@ func executeToolsParallel(
 	conv *AgentContext,
 	assistantMsg AgentMessage,
 	ch chan<- AgentEvent,
-) ([]AgentMessage, bool, error) {
+) ([]AgentMessage, []toolModifier, bool, error) {
 	type result struct {
 		idx       int
 		msg       AgentMessage
+		mod       toolModifier
 		terminate bool
 		err       error
 	}
@@ -388,8 +477,8 @@ func executeToolsParallel(
 		wg.Add(1)
 		go func(idx int, tc llmprovider.ToolCall) {
 			defer wg.Done()
-			msg, term, err := executeSingleTool(ctx, cfg, conv, assistantMsg, tc, ch)
-			resultCh <- result{idx: idx, msg: msg, terminate: term, err: err}
+			msg, mod, term, err := executeSingleTool(ctx, cfg, conv, assistantMsg, tc, ch)
+			resultCh <- result{idx: idx, msg: msg, mod: mod, terminate: term, err: err}
 		}(i, tc)
 	}
 
@@ -400,20 +489,22 @@ func executeToolsParallel(
 	ordered := make([]result, len(assistantMsg.ToolCalls))
 	for r := range resultCh {
 		if r.err != nil {
-			return nil, false, r.err
+			return nil, nil, false, r.err
 		}
 		ordered[r.idx] = r
 	}
 
 	msgs := make([]AgentMessage, 0, len(ordered))
+	mods := make([]toolModifier, 0, len(ordered))
 	terminate := false
 	for _, r := range ordered {
 		msgs = append(msgs, r.msg)
+		mods = append(mods, r.mod)
 		if r.terminate {
 			terminate = true
 		}
 	}
-	return msgs, terminate, nil
+	return msgs, mods, terminate, nil
 }
 
 func executeSingleTool(
@@ -423,7 +514,7 @@ func executeSingleTool(
 	assistantMsg AgentMessage,
 	tc llmprovider.ToolCall,
 	ch chan<- AgentEvent,
-) (AgentMessage, bool, error) {
+) (AgentMessage, toolModifier, bool, error) {
 	// BeforeToolCall hook
 	if cfg.BeforeToolCall != nil {
 		bctx := &BeforeToolCallContext{
@@ -450,7 +541,7 @@ func executeSingleTool(
 					Result: &blocked, IsError: true,
 				},
 			})
-			return ToolResultMessage(tc.ID, blocked), false, nil
+			return ToolResultMessage(tc.ID, blocked), toolModifier{}, false, nil
 		}
 	}
 
@@ -478,6 +569,34 @@ func executeSingleTool(
 		}
 		isError = true
 	} else {
+		// ValidateInput hook — abort early on invalid args
+		if found.ValidateInput != nil {
+			if v := found.ValidateInput(tc.Arguments); v != nil && !v.Valid {
+				msg := v.Message
+				if msg == "" {
+					msg = fmt.Sprintf("tool %q: invalid input", tc.Name)
+				}
+				toolResult = AgentToolResult{Content: msg, IsError: true}
+				isError = true
+				goto afterExec
+			}
+		}
+
+		// CheckPermission hook — deny or delegate to BeforeToolCall
+		if found.CheckPermission != nil {
+			switch found.CheckPermission(tc.Arguments) {
+			case ToolPermissionDeny:
+				toolResult = AgentToolResult{
+					Content: fmt.Sprintf("tool %q: permission denied", tc.Name),
+					IsError: true,
+				}
+				isError = true
+				goto afterExec
+			}
+			// ToolPermissionAllow and ToolPermissionAsk both fall through;
+			// "ask" defers the decision to the existing BeforeToolCall hook.
+		}
+
 		func() {
 			defer func() {
 				if r := recover(); r != nil {
@@ -489,6 +608,7 @@ func executeSingleTool(
 				}
 			}()
 			texCtx := &ToolExecContext{
+				Ctx:      ctx,
 				Call:     tc,
 				Args:     tc.Arguments,
 				AgentCtx: conv,
@@ -497,8 +617,10 @@ func executeSingleTool(
 			isError = toolResult.IsError
 		}()
 	}
+afterExec:
 
 	// AfterToolCall hook
+	_ = found // suppress potential goto-skip warning
 	if cfg.AfterToolCall != nil {
 		actx := &AfterToolCallContext{
 			AssistantMessage: assistantMsg,
@@ -522,7 +644,45 @@ func executeSingleTool(
 		},
 	})
 
-	return ToolResultMessage(tc.ID, toolResult), toolResult.Terminate, nil
+	// ContextModifier is deferred: returned to the caller so it can be applied
+	// AFTER all tool result messages have been appended to conv.  This ensures
+	// the correct OpenAI message order: assistant(tool_calls) → tool(result) →
+	// [context patches].  Applying it here would insert patches BEFORE the
+	// tool result, causing HTTP 400 on strict endpoints.
+	return ToolResultMessage(tc.ID, toolResult), toolModifier{modifier: toolResult.ContextModifier}, toolResult.Terminate, nil
+}
+
+// lastUserText returns the text content of the most-recent user message in
+// the conversation, used as the recall query for the MemoryProvider.
+func lastUserText(msgs []AgentMessage) string {
+	for i := len(msgs) - 1; i >= 0; i-- {
+		if msgs[i].Role == llmprovider.RoleUser {
+			for _, p := range msgs[i].Content {
+				if p.Type == llmprovider.ContentTypeText && p.Text != "" {
+					return p.Text
+				}
+			}
+		}
+	}
+	return ""
+}
+
+// lastTurnMessages returns the last user message and the last assistant
+// message from the conversation for SyncTurn.  When the conversation is
+// shorter than expected the zero-value AgentMessage is returned safely.
+func lastTurnMessages(msgs []AgentMessage) (userMsg, assistantMsg AgentMessage) {
+	for i := len(msgs) - 1; i >= 0; i-- {
+		if msgs[i].Role == llmprovider.RoleAssistant && assistantMsg.ID == "" {
+			assistantMsg = msgs[i]
+		}
+		if msgs[i].Role == llmprovider.RoleUser && userMsg.ID == "" {
+			userMsg = msgs[i]
+		}
+		if userMsg.ID != "" && assistantMsg.ID != "" {
+			break
+		}
+	}
+	return userMsg, assistantMsg
 }
 
 // emit sends an event non-blockingly (drops if channel is full, which only

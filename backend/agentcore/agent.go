@@ -176,6 +176,23 @@ func (a *Agent) runAndTrack(ctx context.Context, conv AgentContext) <-chan Agent
 					pendingTCs = newPending
 					a.mu.Lock()
 					a.state.PendingToolCalls = pendingTCs
+					// Persist tool result so multi-turn history is valid:
+					// assistant(tool_calls) → tool_result → assistant(text).
+					// Without this, the next Prompt() sends two consecutive assistant
+					// messages which causes HTTP 400 on OpenAI-compat endpoints.
+					if ev.ToolCall.Result != nil {
+						a.state.Messages = append(a.state.Messages,
+							ToolResultMessage(ev.ToolCall.ID, *ev.ToolCall.Result))
+					}
+					a.mu.Unlock()
+				}
+
+			case AgentEventContextPatch:
+				// Persist messages injected by ContextModifier so they appear
+				// in history for subsequent Prompt() calls.
+				if len(ev.Messages) > 0 {
+					a.mu.Lock()
+					a.state.Messages = append(a.state.Messages, ev.Messages...)
 					a.mu.Unlock()
 				}
 

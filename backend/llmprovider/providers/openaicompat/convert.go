@@ -27,6 +27,19 @@ func ConvertMessages(
 
 	for i, msg := range messages {
 		switch msg.Role {
+		case llmprovider.RoleSystem:
+			// Mid-conversation system messages (e.g. from ContextModifier injections).
+			text := ""
+			for _, p := range msg.Content {
+				if p.Type == llmprovider.ContentTypeText {
+					text += p.Text
+				}
+			}
+			role := "system"
+			if llmprovider.BoolVal(compat.SupportsDeveloperRole, false) {
+				role = "developer"
+			}
+			out = append(out, map[string]any{"role": role, "content": text})
 		case llmprovider.RoleUser:
 			out = append(out, convertUserMessage(msg, compat))
 		case llmprovider.RoleAssistant:
@@ -249,7 +262,7 @@ func BuildReasoningParams(
 	switch compat.ThinkingFormat {
 	case llmprovider.ThinkingFormatDeepSeek:
 		body["thinking"] = map[string]any{
-			"type":         "enabled_budget",
+			"type":          "enabled_budget",
 			"budget_tokens": thinkingBudget,
 		}
 		body["reasoning_effort"] = effortStr
