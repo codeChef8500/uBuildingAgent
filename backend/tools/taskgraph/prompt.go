@@ -3,7 +3,7 @@ package taskgraph
 import "github.com/ubuildingagent/backend/tools"
 
 // ---------------------------------------------------------------------------
-// TaskCreate prompt â€?mirrors opensource/claude-code-main TaskCreateTool/prompt.ts
+// TaskCreate prompt --mirrors opensource/claude-code-main TaskCreateTool/prompt.ts
 // ---------------------------------------------------------------------------
 
 func buildCreatePrompt(opts tool.PromptOptions) string {
@@ -59,7 +59,7 @@ All tasks are created with status ` + "`pending`" + `.
 }
 
 // ---------------------------------------------------------------------------
-// TaskGet prompt â€?mirrors TaskGetTool/prompt.ts
+// TaskGet prompt --mirrors TaskGetTool/prompt.ts
 // ---------------------------------------------------------------------------
 
 const getPromptText = `Use this tool to retrieve a task by its ID from the task list.
@@ -85,7 +85,7 @@ Returns full task details:
 `
 
 // ---------------------------------------------------------------------------
-// TaskUpdate prompt â€?mirrors TaskUpdateTool/prompt.ts
+// TaskUpdate prompt --mirrors TaskUpdateTool/prompt.ts
 // ---------------------------------------------------------------------------
 
 const updatePromptText = `Use this tool to update a task in the task list.
@@ -128,7 +128,7 @@ const updatePromptText = `Use this tool to update a task in the task list.
 
 ## Status Workflow
 
-Status progresses: ` + "`pending`" + ` â†?` + "`in_progress`" + ` â†?` + "`completed`" + `
+Status progresses: ` + "`pending`" + ` --` + "`in_progress`" + ` --` + "`completed`" + `
 
 Use ` + "`cancelled`" + ` when a task is no longer relevant; use ` + "`failed`" + ` when work could not be completed.
 
@@ -165,7 +165,7 @@ Set up task dependencies (task 2 is blocked by task 1):
 `
 
 // ---------------------------------------------------------------------------
-// TaskList prompt â€?mirrors TaskListTool/prompt.ts
+// TaskList prompt --mirrors TaskListTool/prompt.ts
 // ---------------------------------------------------------------------------
 
 func buildListPrompt(opts tool.PromptOptions) string {

@@ -71,7 +71,7 @@ type BrowserSession struct {
 	Headless  bool      `json:"headless"`
 
 	browser   *rod.Browser
-	pages     map[string]*rod.Page // tabID â†?Page
+	pages     map[string]*rod.Page // tabID --Page
 	activeTab string
 
 	// Dialog state
@@ -100,7 +100,7 @@ type BrowserSession struct {
 	httpClient *http.Client
 	tlsClient  *TLSClient // TLS fingerprint-impersonating client (Phase 3)
 
-	// IFrame context â€?when non-nil, operations target this frame
+	// IFrame context --when non-nil, operations target this frame
 	iframeCtx *rod.Page
 
 	// Actions API state
@@ -190,9 +190,9 @@ func getManager() *SessionManager {
 }
 
 // CreateSession creates a new browser session. Supports 3 modes:
-// 1. CDP connect (cdpURL set) â€?attach to existing Chrome
-// 2. Persistent (userDataDir set) â€?reuse profile
-// 3. Standard launch â€?fresh browser
+// 1. CDP connect (cdpURL set) --attach to existing Chrome
+// 2. Persistent (userDataDir set) --reuse profile
+// 3. Standard launch --fresh browser
 func (sm *SessionManager) CreateSession(ctx context.Context, in *Input) (*BrowserSession, error) {
 	sm.mu.Lock()
 	if len(sm.sessions) >= sm.maxSessions {
@@ -236,7 +236,7 @@ func (sm *SessionManager) CreateSession(ctx context.Context, in *Input) (*Browse
 			l = l.Set("ignore-certificate-errors", "")
 		}
 
-		// Anti-detection launcher flags â€?ported from Scrapling STEALTH_ARGS + DEFAULT_ARGS
+		// Anti-detection launcher flags --ported from Scrapling STEALTH_ARGS + DEFAULT_ARGS
 		for flag, val := range stealthLauncherFlags {
 			l = l.Set(flags.Flag(flag), val)
 		}

@@ -35,13 +35,13 @@ const antiDetectScript = `
 (function() {
   'use strict';
 
-  // §1 �?Remove webdriver flag
+  // §1 --Remove webdriver flag
   try {
     Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
     delete navigator.__proto__.webdriver;
   } catch(e) {}
 
-  // §2 �?Fake window.chrome
+  // §2 --Fake window.chrome
   try {
     if (!window.chrome) {
       window.chrome = {};
@@ -87,7 +87,7 @@ const antiDetectScript = `
     }
   } catch(e) {}
 
-  // §3 �?Permissions API
+  // §3 --Permissions API
   try {
     var origQuery = navigator.permissions.query;
     navigator.permissions.query = function(params) {
@@ -98,7 +98,7 @@ const antiDetectScript = `
     };
   } catch(e) {}
 
-  // §4 �?Plugins & MimeTypes
+  // §4 --Plugins & MimeTypes
   try {
     var pluginData = [
       { name: 'Chrome PDF Plugin', filename: 'internal-pdf-viewer', description: 'Portable Document Format', mimeType: 'application/x-google-chrome-pdf' },
@@ -118,7 +118,7 @@ const antiDetectScript = `
     Object.defineProperty(navigator, 'plugins', { get: function() { return fakePlugins; } });
   } catch(e) {}
 
-  // §5 �?Language & Platform & Hardware
+  // §5 --Language & Platform & Hardware
   try {
     Object.defineProperty(navigator, 'languages', { get: function() { return ['zh-CN','zh','en-US','en']; } });
     Object.defineProperty(navigator, 'language', { get: function() { return 'zh-CN'; } });
@@ -128,7 +128,7 @@ const antiDetectScript = `
     try { Object.defineProperty(navigator, 'deviceMemory', { get: function() { return 8; } }); } catch(e2) {}
   } catch(e) {}
 
-  // §6 �?Canvas fingerprint noise (deterministic seed)
+  // §6 --Canvas fingerprint noise (deterministic seed)
   try {
     var origToDataURL = HTMLCanvasElement.prototype.toDataURL;
     HTMLCanvasElement.prototype.toDataURL = function(type) {
@@ -144,7 +144,7 @@ const antiDetectScript = `
     };
   } catch(e) {}
 
-  // §7 �?WebGL Renderer (WebGL1 + WebGL2)
+  // §7 --WebGL Renderer (WebGL1 + WebGL2)
   try {
     var patchWebGL = function(proto) {
       var origGetParam = proto.getParameter;
@@ -158,12 +158,12 @@ const antiDetectScript = `
     try { patchWebGL(WebGL2RenderingContext.prototype); } catch(e2) {}
   } catch(e) {}
 
-  // §8 �?hasFocus always true
+  // §8 --hasFocus always true
   try {
     Document.prototype.hasFocus = function() { return true; };
   } catch(e) {}
 
-  // §9 �?Window dimensions
+  // §9 --Window dimensions
   try {
     if (window.outerWidth === 0) {
       Object.defineProperty(window, 'outerWidth', { get: function() { return window.innerWidth; } });
@@ -171,14 +171,14 @@ const antiDetectScript = `
     }
   } catch(e) {}
 
-  // §10 �?Screen properties
+  // §10 --Screen properties
   try {
     Object.defineProperty(screen, 'availWidth', { get: function() { return screen.width; } });
     Object.defineProperty(screen, 'colorDepth', { get: function() { return 24; } });
     Object.defineProperty(screen, 'pixelDepth', { get: function() { return 24; } });
   } catch(e) {}
 
-  // §11 �?AudioContext fingerprint noise
+  // §11 --AudioContext fingerprint noise
   try {
     var origGetFrequencyData = AnalyserNode.prototype.getFloatFrequencyData;
     AnalyserNode.prototype.getFloatFrequencyData = function(array) {
@@ -189,7 +189,7 @@ const antiDetectScript = `
     };
   } catch(e) {}
 
-  // §12 �?Battery API
+  // §12 --Battery API
   try {
     Object.defineProperty(navigator, 'getBattery', {
       value: function() {
@@ -202,7 +202,7 @@ const antiDetectScript = `
     });
   } catch(e) {}
 
-  // §13 �?Connection API
+  // §13 --Connection API
   try {
     if (!navigator.connection) {
       Object.defineProperty(navigator, 'connection', {
@@ -217,7 +217,7 @@ const antiDetectScript = `
     }
   } catch(e) {}
 
-  // §14 �?WebRTC leak protection
+  // §14 --WebRTC leak protection
   try {
     var origSetRemoteDesc = RTCPeerConnection.prototype.setRemoteDescription;
     RTCPeerConnection.prototype.setRemoteDescription = function(desc) {
@@ -229,7 +229,7 @@ const antiDetectScript = `
     };
   } catch(e) {}
 
-  // §15 �?MediaDevices
+  // §15 --MediaDevices
   try {
     var origEnumDevices = navigator.mediaDevices.enumerateDevices;
     navigator.mediaDevices.enumerateDevices = function() {
@@ -241,7 +241,7 @@ const antiDetectScript = `
     };
   } catch(e) {}
 
-  // §16 �?Remove CDP/Selenium/automation variables
+  // §16 --Remove CDP/Selenium/automation variables
   try {
     var autoKeys = Object.getOwnPropertyNames(window).filter(function(k) {
       return /^cdc_|^__playwright|^__pw_|^__selenium|^_Selenium_IDE_Recorder|^__webdriver_evaluate|^__driver_evaluate|^__webdriver_unwrap|^__fxdriver_evaluate/.test(k);
@@ -255,7 +255,7 @@ const antiDetectScript = `
     };
   } catch(e) {}
 
-  // §17 �?Connection API aliases (mozConnection, webkitConnection)
+  // §17 --Connection API aliases (mozConnection, webkitConnection)
   try {
     if (navigator.connection) {
       try { Object.defineProperty(navigator, 'mozConnection',    { get: function() { return navigator.connection; } }); } catch(e2) {}
@@ -263,7 +263,7 @@ const antiDetectScript = `
     }
   } catch(e) {}
 
-  // §18 �?Iframe contentWindow.chrome consistency
+  // §18 --Iframe contentWindow.chrome consistency
   try {
     var origHTMLIFrameElement = Object.getOwnPropertyDescriptor(HTMLIFrameElement.prototype, 'contentWindow');
     if (origHTMLIFrameElement && origHTMLIFrameElement.get) {

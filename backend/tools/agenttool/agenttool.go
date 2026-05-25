@@ -18,7 +18,7 @@ import (
 // claude-code's public surface; callers can override via WithName.
 const Name = "Task"
 
-// Input matches claude-code's Task tool input (subset â€?A15 adds the
+// Input matches claude-code's Task tool input (subset --A15 adds the
 // remaining multi-agent / isolation fields incrementally; unknown fields
 // unmarshalled from the model are ignored).
 type Input struct {
@@ -28,7 +28,7 @@ type Input struct {
 	MaxTurns     int    `json:"max_turns,omitempty"`
 
 	// A15 Â· optional multi-agent fields. All are accepted at parse time but
-	// only `Model` / `RunInBackground` / `Mode` affect Phase A behaviour â€?
+	// only `Model` / `RunInBackground` / `Mode` affect Phase A behaviour --
 	// the rest are wired in Phase B+D.
 	Model           string `json:"model,omitempty"`
 	RunInBackground bool   `json:"run_in_background,omitempty"`
@@ -48,7 +48,7 @@ type Output struct {
 	SubagentType string `json:"subagent_type,omitempty"`
 	Result       string `json:"result,omitempty"`
 
-	// Phase D async preview fields â€?empty for sync invocations.
+	// Phase D async preview fields --empty for sync invocations.
 	AgentID    string `json:"agent_id,omitempty"`
 	OutputFile string `json:"output_file,omitempty"`
 }
@@ -127,11 +127,11 @@ func (a *AgentTool) InputSchema() *tool.JSONSchema {
 			"subagent_type":     {Type: "string", Description: "The type of specialized agent to use for this task (optional; defaults to general-purpose)."},
 			"max_turns":         {Type: "integer", Description: "Cap on model turns for the sub-query (optional)."},
 			"model":             {Type: "string", Description: "Optional model override for this agent (alias or full id). Takes precedence over the agent definition's model."},
-			"run_in_background": {Type: "boolean", Description: "Set to true to run this agent in the background; you will be notified when it completes. Phase D wiring â€?currently treated as foreground."},
+			"run_in_background": {Type: "boolean", Description: "Set to true to run this agent in the background; you will be notified when it completes. Phase D wiring --currently treated as foreground."},
 			"name":              {Type: "string", Description: "Name for the spawned agent, used for SendMessage routing (Phase D)."},
 			"team_name":         {Type: "string", Description: "Team context for spawning (Phase D)."},
 			"mode":              {Type: "string", Description: "Permission mode override for the spawned agent (e.g., \"plan\")."},
-			"isolation":         {Type: "string", Description: "Isolation mode (\"worktree\") â€?Phase D."},
+			"isolation":         {Type: "string", Description: "Isolation mode (\"worktree\") --Phase D."},
 			"cwd":               {Type: "string", Description: "Absolute working directory for the agent (overrides CWD)."},
 		},
 		Required: []string{"prompt"},
@@ -219,7 +219,7 @@ func (a *AgentTool) ValidateInput(input json.RawMessage, toolCtx *agents.ToolUse
 	}
 	// A11 Â· the effective allow list is the explicit one set via the option
 	// (takes precedence) OR, when unset, the AllowedAgentTypes attached to
-	// the engine's AgentDefinitions â€?which mirrors how TS's
+	// the engine's AgentDefinitions --which mirrors how TS's
 	// filterDeniedAgents result flows through Agent(name) permission rules.
 	allowList := a.effectiveAllowList(toolCtx)
 	if in.SubagentType != "" && len(allowList) > 0 {
@@ -277,7 +277,7 @@ func (a *AgentTool) Call(ctx context.Context, input json.RawMessage, toolCtx *ag
 	}
 
 	// A15 Â· pass-through model override. Background/name/team/isolation/cwd
-	// are accepted but not yet plumbed to SpawnSubAgent â€?Phase D wires
+	// are accepted but not yet plumbed to SpawnSubAgent --Phase D wires
 	// them through SubAgentParams expansions.
 	result, err := toolCtx.SpawnSubAgent(ctx, agents.SubAgentParams{
 		Description:  in.Description,

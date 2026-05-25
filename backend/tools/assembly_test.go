@@ -83,7 +83,7 @@ func TestFilterByDenyRules_MCPServerPrefix(t *testing.T) {
 }
 
 func TestFilterByDenyRules_PatternDoesNotBlanket(t *testing.T) {
-	// Rule with a non-empty pattern is NOT a blanket deny â€?filtering leaves
+	// Rule with a non-empty pattern is NOT a blanket deny --filtering leaves
 	// the tool intact (runtime permission check handles per-input rules).
 	tools := Tools{newFakeTool("Bash")}
 	permCtx := agents.NewEmptyToolPermissionContext()

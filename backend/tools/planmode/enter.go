@@ -13,7 +13,7 @@ import (
 // EnterName matches claude-code-main's ENTER_PLAN_MODE_TOOL_NAME.
 const EnterName = "EnterPlanMode"
 
-// EnterInput is the EnterPlanMode input â€?claude-code-main takes no parameters,
+// EnterInput is the EnterPlanMode input --claude-code-main takes no parameters,
 // but we tolerate an optional free-form note for audit logs.
 type EnterInput struct {
 	Note string `json:"note,omitempty"`

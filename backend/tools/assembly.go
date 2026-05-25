@@ -8,7 +8,7 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// Tool assembly + filtering â€?maps to claude-code-main's
+// Tool assembly + filtering --maps to claude-code-main's
 // getTools() / assembleToolPool() / filterToolsByDenyRules() pipeline.
 //
 // Design goals:
@@ -16,7 +16,7 @@ import (
 //      that Anthropic prompt-cache breakpoints line up on a stable boundary
 //      regardless of which MCP servers connect.
 //   2. Apply deny rules identically at assembly time and at permission-check
-//      time â€?one matcher, two call sites.
+//      time --one matcher, two call sites.
 // ---------------------------------------------------------------------------
 
 // MCPToolNamePrefix is the prefix shared by all MCP tools. Name layout:

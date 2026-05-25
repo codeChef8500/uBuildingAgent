@@ -17,7 +17,7 @@ import (
 //  2. Creates a browser session (headless)
 //  3. Navigates to https://www.baidu.com
 //  4. Waits for the page to load
-//  5. Takes a full-page screenshot using a RELATIVE path â€?verifies it resolves into the workspace
+//  5. Takes a full-page screenshot using a RELATIVE path --verifies it resolves into the workspace
 //  6. Closes the session
 //
 // Run with:
@@ -40,7 +40,7 @@ func TestBrowserOpenBaiduAndScreenshot(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
-	// Use a relative path â€?should resolve to workspaceDir/screenshots/baidu_screenshot.png
+	// Use a relative path --should resolve to workspaceDir/screenshots/baidu_screenshot.png
 	relScreenshotPath := filepath.Join("screenshots", "baidu_screenshot.png")
 	expectedAbsPath := filepath.Join(workspaceDir, relScreenshotPath)
 

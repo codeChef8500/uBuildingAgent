@@ -88,7 +88,7 @@ func fetchWithRedirects(client *http.Client, rawURL string, headers map[string]s
 				currentURL = redirectURL
 				continue
 			}
-			// Cross-host redirect â€?report back to caller.
+			// Cross-host redirect --report back to caller.
 			return nil, nil, &RedirectInfo{
 				OriginalURL: rawURL,
 				RedirectURL: redirectURL,
@@ -96,7 +96,7 @@ func fetchWithRedirects(client *http.Client, rawURL string, headers map[string]s
 			}, nil
 		}
 
-		// Not a redirect â€?read body and return.
+		// Not a redirect --read body and return.
 		body, err := io.ReadAll(io.LimitReader(resp.Body, maxBodySize))
 		resp.Body.Close()
 		if err != nil {

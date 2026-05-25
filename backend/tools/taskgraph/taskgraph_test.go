@@ -90,7 +90,7 @@ func TestStore_CycleDetection_ParentChain(t *testing.T) {
 	a, _ := s.Add(Node{Title: "a"})
 	b, _ := s.Add(Node{Title: "b", ParentID: a.ID})
 	c, _ := s.Add(Node{Title: "c", ParentID: b.ID})
-	// Now try to make a's parent = c �?forms a cycle a→c→b→a
+	// Now try to make a's parent = c --forms a cycle a→c→b→a
 	if _, err := s.Update(a.ID, UpdateFields{ParentID: strp(c.ID)}); err == nil {
 		t.Fatal("expected cycle error")
 	}
@@ -133,7 +133,7 @@ func TestStore_StopTransitionsCancelled(t *testing.T) {
 	a, _ := s.Add(Node{Title: "a", Status: StatusInProgress})
 	status, ok, err := s.Stop(a.ID)
 	if err != nil || !ok || status != StatusCancelled {
-		t.Fatalf("stop a �?(%q,%v,%v)", status, ok, err)
+		t.Fatalf("stop a --(%q,%v,%v)", status, ok, err)
 	}
 }
 

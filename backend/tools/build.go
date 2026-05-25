@@ -10,7 +10,7 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// BuildTool â€?factory that produces a complete Tool from a partial ToolDef,
+// BuildTool --factory that produces a complete Tool from a partial ToolDef,
 // filling in fail-closed defaults for every optional method. Maps to TypeScript
 // buildTool() + TOOL_DEFAULTS in src/Tool.ts.
 // ---------------------------------------------------------------------------
@@ -26,7 +26,7 @@ type ToolDef struct {
 	Description          func(input json.RawMessage) string
 	MapToolResultToParam func(result interface{}, toolUseID string) *agents.ContentBlock
 
-	// Optional â€?overridden via function fields so the owner keeps lexical
+	// Optional --overridden via function fields so the owner keeps lexical
 	// closure over any state without subclassing.
 	Aliases            []string
 	Prompt             func(opts PromptOptions) string
@@ -40,7 +40,7 @@ type ToolDef struct {
 }
 
 // BuildTool assembles a fully-populated Tool from def. Panics if any required
-// field is missing â€?tool construction is a startup-time concern.
+// field is missing --tool construction is a startup-time concern.
 func BuildTool(def ToolDef) Tool {
 	if def.Name == "" {
 		panic("tool.BuildTool: Name is required")
@@ -133,7 +133,7 @@ func (b *builtTool) MapToolResultToParam(result interface{}, toolUseID string) *
 var _ Tool = (*builtTool)(nil)
 
 // ---------------------------------------------------------------------------
-// AssemblePromptOptions â€?one-shot builder for the dynamic PromptOptions
+// AssemblePromptOptions --one-shot builder for the dynamic PromptOptions
 // fields that every Tool.Prompt() implementation shares. Hosts call this
 // once per assembly (system-prompt rebuild) and pass the result down to
 // Tool.Prompt(opts). Individual tools must tolerate any field being the
@@ -157,7 +157,7 @@ type AssembleOptions struct {
 	UserType string
 
 	// EmbeddedSearchTools signals the host is running inside an IDE or
-	// other embedded env â€?flips BashTool/PowerShell preferences.
+	// other embedded env --flips BashTool/PowerShell preferences.
 	EmbeddedSearchTools bool
 
 	// ForkEnabled toggles the AgentTool fork section.
@@ -172,7 +172,7 @@ type AssembleOptions struct {
 
 	// PowerShellEdition is one of "desktop" | "core" | "" (unknown).
 	// Callers detect it via tool/shell.DetectPowerShellEdition() and pass
-	// the value in â€?AssemblePromptOptions does not probe anything.
+	// the value in --AssemblePromptOptions does not probe anything.
 	PowerShellEdition string
 
 	// PreviewFormat for AskUserQuestion: "markdown" (default) or "html".
@@ -198,7 +198,7 @@ type AssembleOptions struct {
 
 // AssemblePromptOptions builds a PromptOptions from opts. It populates the
 // derived fields (PlatformOS, MonthYear) from runtime state and leaves
-// caller-supplied bits (UserType, ForkEnabled, â€? untouched.
+// caller-supplied bits (UserType, ForkEnabled, -- untouched.
 func AssemblePromptOptions(opts AssembleOptions) PromptOptions {
 	now := opts.Now
 	if now.IsZero() {

@@ -14,8 +14,8 @@ import (
 //
 // Windows ships two families of PowerShell:
 //
-//   - "desktop" â†?Windows PowerShell 5.1 (bundled with the OS, `powershell.exe`)
-//   - "core"    â†?PowerShell 7+ (cross-platform, `pwsh` / `pwsh.exe`)
+//   - "desktop" --Windows PowerShell 5.1 (bundled with the OS, `powershell.exe`)
+//   - "core"    --PowerShell 7+ (cross-platform, `pwsh` / `pwsh.exe`)
 //
 // The two speak (mostly) the same dialect but the 7+ line adds:
 //
@@ -26,11 +26,11 @@ import (
 // Our Prompt() text for the PowerShell tool needs to warn the model about
 // the 5.1-specific limitations so we expose a one-shot detector. The
 // detection runs at most once per process (the result is cached) and only
-// fires on Windows â€?on *nix we assume `pwsh` == core when installed and
+// fires on Windows --on *nix we assume `pwsh` == core when installed and
 // "" otherwise, because there is no desktop edition off Windows.
 //
 // The detector has a tight 2-second timeout. If PowerShell is not on PATH
-// or the probe times out we return "" â€?callers must fall back to the
+// or the probe times out we return "" --callers must fall back to the
 // conservative 5.1-safe prompt guidance.
 // ---------------------------------------------------------------------------
 

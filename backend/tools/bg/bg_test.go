@@ -109,7 +109,7 @@ func TestManager_ReadOutput_FullReread(t *testing.T) {
 	if slice != "abc" {
 		t.Fatalf("slice=%q", slice)
 	}
-	// Second incremental read â†?empty.
+	// Second incremental read --empty.
 	_, slice, _, _ = m.ReadOutput(id, true)
 	if slice != "" {
 		t.Fatalf("slice=%q", slice)

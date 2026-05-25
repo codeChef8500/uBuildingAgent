@@ -8,7 +8,7 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// Registry â€?tool registration and lookup
+// Registry --tool registration and lookup
 // Maps to TypeScript tools.ts (getAllBaseTools, getTools, assembleToolPool)
 // ---------------------------------------------------------------------------
 
@@ -64,6 +64,14 @@ func (r *Registry) Register(t Tool, opts ...RegisterOption) {
 		r.isBuiltin[t.Name()] = true
 	}
 	r.sortStable()
+}
+
+// RegisterDefinition registers a ToolDefinition's underlying Tool into the
+// registry. The extra ToolDefinition metadata (PromptFn, RenderResult,
+// Guidelines) is available to callers that retain the ToolDefinition slice;
+// the registry itself stores only the core Tool interface.
+func (r *Registry) RegisterDefinition(def ToolDefinition, opts ...RegisterOption) {
+	r.Register(def.ToolImpl, opts...)
 }
 
 // Deny adds a tool name to the deny list (prevents it from being returned).

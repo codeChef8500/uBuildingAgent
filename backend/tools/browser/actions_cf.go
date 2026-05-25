@@ -276,7 +276,7 @@ func (t *BrowserTool) doVerifyCFClearance(in *Input) string {
 				c.Domain, c.Expires, truncStr(c.Value, 40))
 		}
 	}
-	return "cf_clearance not found â€?Cloudflare bypass not active."
+	return "cf_clearance not found --Cloudflare bypass not active."
 }
 
 // clickTurnstileCheckbox attempts to find and click the Cloudflare Turnstile checkbox.

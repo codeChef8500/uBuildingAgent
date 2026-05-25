@@ -24,7 +24,7 @@ func (p *FallbackProvider) Name() string {
 	for i, pr := range p.providers {
 		names[i] = pr.Name()
 	}
-	return strings.Join(names, " â†?")
+	return strings.Join(names, " --")
 }
 
 func (p *FallbackProvider) Search(ctx context.Context, query string, maxResults int, allowedDomains, blockedDomains []string) ([]SearchHit, error) {
@@ -40,7 +40,7 @@ func (p *FallbackProvider) Search(ctx context.Context, query string, maxResults 
 				slog.Any("err", err))
 			lastErr = err
 		} else {
-			// No error but 0 results â€?still try next provider.
+			// No error but 0 results --still try next provider.
 			slog.Warn("websearch: provider returned 0 results, trying next",
 				slog.String("provider", pr.Name()),
 				slog.String("query", query))
@@ -55,10 +55,10 @@ func (p *FallbackProvider) Search(ctx context.Context, query string, maxResults 
 
 // ResolveProvider selects the best available search provider based on
 // environment variables. Priority:
-//  1. AGENT_ENGINE_SEARCH_API_KEY + AGENT_ENGINE_SEARCH_PROVIDER=brave â†?Brave
-//  2. AGENT_ENGINE_SEARCH_API_KEY (default) â†?Brave
-//  3. BRAVE_SEARCH_API_KEY â†?Brave
-//  4. No API key â†?DuckDuckGo (with Brave fallback hint on failure)
+//  1. AGENT_ENGINE_SEARCH_API_KEY + AGENT_ENGINE_SEARCH_PROVIDER=brave --Brave
+//  2. AGENT_ENGINE_SEARCH_API_KEY (default) --Brave
+//  3. BRAVE_SEARCH_API_KEY --Brave
+//  4. No API key --DuckDuckGo (with Brave fallback hint on failure)
 //
 // When an API-based provider is available, DDG is added as the last fallback.
 func ResolveProvider(tool *WebSearchTool) SearchProvider {

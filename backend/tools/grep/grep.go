@@ -150,9 +150,9 @@ Usage:
 - ALWAYS use ` + Name + ` for search tasks. NEVER invoke ` + "`grep`" + ` or ` + "`rg`" + ` as a ` + bashRef + ` command. The ` + Name + ` tool has been optimized for correct permissions and access.
 - Supports full regex syntax (e.g., "log.*Error", "function\s+\w+")
 - Filter files with the glob parameter (e.g., "*.js", "**/*.tsx").
-- Output modes: "content" (default â€?matching lines), "files_with_matches" (file paths only), "count" (per-file match counts).
+- Output modes: "content" (default --matching lines), "files_with_matches" (file paths only), "count" (per-file match counts).
 - Use the ` + agentRef + ` tool for open-ended searches requiring multiple rounds.
-- Pattern syntax: Uses ripgrep (not grep) â€?literal braces need escaping (use ` + "`interface\\{\\}`" + ` to find ` + "`interface{}`" + ` in Go code).
+- Pattern syntax: Uses ripgrep (not grep) --literal braces need escaping (use ` + "`interface\\{\\}`" + ` to find ` + "`interface{}`" + ` in Go code).
 - Multiline matching: By default patterns match within single lines only. For cross-line patterns like ` + "`struct \\{[\\s\\S]*?field`" + `, use a multi-line-aware regex and set -C to capture surrounding context.
 - Context flags: -A (trailing), -B (leading), -C (both, overrides -A/-B). -n toggles 1-indexed line numbers in output.
 - head_limit caps the result rows (applies to content & files_with_matches modes). The engine transparently falls back to a Go regex walker when ripgrep is not on PATH.`
@@ -286,7 +286,7 @@ func renderOutput(content interface{}) string {
 		}
 	}
 	if out.Truncated {
-		sb.WriteString("â€?(truncated)\n")
+		sb.WriteString("--(truncated)\n")
 	}
 	return sb.String()
 }
@@ -371,7 +371,7 @@ func runGoFallback(ctx context.Context, root string, in Input, mode string) (*Ou
 			out.Total += len(matchedIdx)
 			return nil
 		}
-		// Content mode â€?emit with context.
+		// Content mode --emit with context.
 		for _, mi := range matchedIdx {
 			lo := mi - before
 			if lo < 0 {
@@ -384,7 +384,7 @@ func runGoFallback(ctx context.Context, root string, in Input, mode string) (*Ou
 			for li := lo; li <= hi; li++ {
 				text := string(lines[li])
 				if len(text) > MaxLineLen {
-					text = text[:MaxLineLen] + "â€?
+					text = text[:MaxLineLen] + "--"
 				}
 				ml := MatchLine{Path: path, Text: text}
 				if in.ShowLineNumbers || before+after > 0 {
@@ -557,7 +557,7 @@ func runRipgrep(ctx context.Context, rgPath, root string, in Input, mode string)
 			path := evt.Data.Path.Text
 			text := strings.TrimRight(evt.Data.Lines.Text, "\n")
 			if len(text) > MaxLineLen {
-				text = text[:MaxLineLen] + "â€?
+				text = text[:MaxLineLen] + "--"
 			}
 			if mode == OutputContent {
 				out.Matches = append(out.Matches, MatchLine{Path: path, Line: evt.Data.LineNumber, Text: text})

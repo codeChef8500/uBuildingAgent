@@ -148,7 +148,7 @@ Skip plan mode when you can reasonably infer the right approach:
 - You're adding a feature with an obvious implementation pattern (e.g., adding a button, a new endpoint following existing conventions)
 - Bug fixes where the fix is clear once you understand the bug
 - Research/exploration tasks (use the Agent tool instead)
-- The user says something like "can we work on X" or "let's do X" â€?just get started
+- The user says something like "can we work on X" or "let's do X" --just get started
 
 When in doubt, prefer starting work and using ` + askUserRef + ` for specific questions over entering a full planning phase.
 

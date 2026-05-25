@@ -94,7 +94,7 @@ func TestPartitionToolCalls_MixedConcurrency(t *testing.T) {
 
 	orch := tool.NewOrchestrator(tools, nil)
 
-	// Read(concurrent) â†?Edit(serial) â†?Grep(concurrent)
+	// Read(concurrent) --Edit(serial) --Grep(concurrent)
 	// Should produce 3 groups: [Read], [Edit], [Grep]
 	calls := []agents.ToolUseBlock{
 		{ID: "1", Name: "Read", Input: json.RawMessage(`{}`)},

@@ -124,9 +124,9 @@ func renderOutput(content interface{}) string {
 		return string(b)
 	}
 	if out.Summary == "" {
-		return fmt.Sprintf("Exited plan mode (%s â†?%s).", out.From, out.To)
+		return fmt.Sprintf("Exited plan mode (%s --%s).", out.From, out.To)
 	}
-	return fmt.Sprintf("Exited plan mode (%s â†?%s):\n%s", out.From, out.To, out.Summary)
+	return fmt.Sprintf("Exited plan mode (%s --%s):\n%s", out.From, out.To, out.Summary)
 }
 
 var _ tool.Tool = (*Tool)(nil)

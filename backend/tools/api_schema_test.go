@@ -133,7 +133,7 @@ func TestToolToAPISchema_OverlayDoesNotMutateCache(t *testing.T) {
 	s1 := ToolToAPISchema(tool, SchemaOpts{DeferLoading: true})
 	assert.True(t, s1.DeferLoading)
 
-	// Second call without overlay â€?should not carry over
+	// Second call without overlay --should not carry over
 	s2 := ToolToAPISchema(tool, SchemaOpts{})
 	assert.False(t, s2.DeferLoading)
 }

@@ -9,7 +9,7 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// Tool Hooks â€?pre/post tool execution hooks
+// Tool Hooks --pre/post tool execution hooks
 // Maps to TypeScript toolHooks.ts (runPreToolUseHooks, runPostToolUseHooks)
 // ---------------------------------------------------------------------------
 
@@ -73,7 +73,7 @@ type HookParams struct {
 }
 
 // ---------------------------------------------------------------------------
-// HookRegistry â€?manages tool hooks with thread-safe access
+// HookRegistry --manages tool hooks with thread-safe access
 // ---------------------------------------------------------------------------
 
 // HookRegistry manages a collection of tool hooks.
@@ -244,5 +244,5 @@ func (r *HookRegistry) RunPostToolUseFailureHooks(ctx context.Context, params Ho
 	return &aggregated
 }
 
-// CanUseToolFn is defined in orchestration.go â€?see that file for the
+// CanUseToolFn is defined in orchestration.go --see that file for the
 // permission check callback type used across the tool package.

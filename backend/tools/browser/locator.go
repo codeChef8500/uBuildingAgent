@@ -24,19 +24,19 @@ type ResolvedLocator struct {
 //
 // Supported formats (16 patterns, evaluated in priority order):
 //
-//	#id / .class / tag[attr]         â†?CSS
-//	css=sel / c=sel                  â†?CSS
-//	xpath=expr / x=expr / //tag      â†?XPath
-//	text=ç™»å½•                        â†?XPath exact text
-//	text:æœç´¢                        â†?XPath contains text
-//	text^å¼€å¤?                       â†?XPath starts-with text
-//	text$ç»“å°¾                        â†?XPath ends-with (substring)
-//	tag:div@class=foo                â†?XPath //div[@class='foo']
-//	@@a=v1@@b=v2                     â†?XPath AND multi-attr
-//	@|a=v1@@b=v2                     â†?XPath OR  multi-attr
-//	@!a=v1                           â†?XPath NOT attr
-//	@attr=val                        â†?XPath //*[@attr='val']
-//	(default) plain text             â†?XPath fuzzy contains
+//	#id / .class / tag[attr]         --CSS
+//	css=sel / c=sel                  --CSS
+//	xpath=expr / x=expr / //tag      --XPath
+//	text=ç™»å½•                        --XPath exact text
+//	text:æœç´¢                        --XPath contains text
+//	text^å¼€--                       --XPath starts-with text
+//	text$ç»“å°¾                        --XPath ends-with (substring)
+//	tag:div@class=foo                --XPath //div[@class='foo']
+//	@@a=v1@@b=v2                     --XPath AND multi-attr
+//	@|a=v1@@b=v2                     --XPath OR  multi-attr
+//	@!a=v1                           --XPath NOT attr
+//	@attr=val                        --XPath //*[@attr='val']
+//	(default) plain text             --XPath fuzzy contains
 func Resolve(locator string) ResolvedLocator {
 	loc := strings.TrimSpace(locator)
 	if loc == "" {
@@ -132,7 +132,7 @@ func Resolve(locator string) ResolvedLocator {
 // cssSelectorRe matches patterns that are almost certainly CSS selectors.
 var cssSelectorRe = regexp.MustCompile(`[>+~\[\]:]`)
 
-// resolveTagLocator parses "div@class=foo" â†?//div[@class='foo']
+// resolveTagLocator parses "div@class=foo" --//div[@class='foo']
 func resolveTagLocator(s string) ResolvedLocator {
 	// Split tag and attrs
 	parts := strings.SplitN(s, "@", 2)
@@ -172,7 +172,7 @@ func parseAttrConditions(s string, op string) string {
 	return strings.Join(parts, fmt.Sprintf(" %s ", op))
 }
 
-// parseSingleAttr converts "attr=val" â†?"@attr='val'" (XPath condition).
+// parseSingleAttr converts "attr=val" --"@attr='val'" (XPath condition).
 func parseSingleAttr(s string) string {
 	idx := strings.Index(s, "=")
 	if idx < 0 {
@@ -197,7 +197,7 @@ func xpathQuote(s string) string {
 		return fmt.Sprintf(`"%s"`, s)
 	}
 
-	// Both present â€?use concat()
+	// Both present --use concat()
 	var parts []string
 	for _, ch := range s {
 		c := string(ch)

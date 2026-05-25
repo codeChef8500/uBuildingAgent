@@ -20,7 +20,7 @@ type NetworkListener struct {
 	types   []string
 
 	packets []*DataPacket
-	pending map[string]*pendingReq // requestId â†?partial data
+	pending map[string]*pendingReq // requestId --partial data
 	mu      sync.Mutex
 	active  bool
 	stopCh  chan struct{} // closed to signal event goroutine to exit
@@ -63,7 +63,7 @@ func (nl *NetworkListener) Start(targets []string, isRegex bool, methods []strin
 	// Enable CDP Network domain
 	_ = proto.NetworkEnable{}.Call(nl.page)
 
-	// Set up event listeners â€?wait() blocks, so run in goroutine
+	// Set up event listeners --wait() blocks, so run in goroutine
 	wait := nl.page.EachEvent(
 		func(e *proto.NetworkRequestWillBeSent) {
 			nl.onRequest(e)

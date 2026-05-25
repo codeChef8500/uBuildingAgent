@@ -64,10 +64,10 @@ func buildPrompt(opts tool.PromptOptions) string {
 	}
 
 	sleepSubitems := []string{
-		"Do not sleep between commands that can run immediately â€?just run them.",
-		"If your command is long running and you would like to be notified when it finishes â€?use `run_in_background`. No sleep needed.",
-		"Do not retry failing commands in a sleep loop â€?diagnose the root cause.",
-		"If waiting for a background task you started with `run_in_background`, you will be notified when it completes â€?do not poll.",
+		"Do not sleep between commands that can run immediately --just run them.",
+		"If your command is long running and you would like to be notified when it finishes --use `run_in_background`. No sleep needed.",
+		"Do not retry failing commands in a sleep loop --diagnose the root cause.",
+		"If waiting for a background task you started with `run_in_background`, you will be notified when it completes --do not poll.",
 		"If you must poll an external process, use a check command (e.g. `gh run view`) rather than sleeping first.",
 		"If you must sleep, keep the duration short (1-5 seconds) to avoid blocking the user.",
 	}
@@ -148,7 +148,7 @@ func sandboxSection() string {
 By default, your command will be run in a sandbox. This sandbox controls which directories and network hosts commands may access or modify without an explicit override.
 
 - You should always default to running commands within the sandbox. Do NOT attempt to bypass it unless a command just failed with evidence of sandbox restrictions.
-- For temporary files, always use the ` + "`$TMPDIR`" + ` environment variable instead of ` + "`/tmp`" + ` directly â€?TMPDIR is automatically set to the sandbox-writable directory.
+- For temporary files, always use the ` + "`$TMPDIR`" + ` environment variable instead of ` + "`/tmp`" + ` directly --TMPDIR is automatically set to the sandbox-writable directory.
 `
 }
 
@@ -166,7 +166,7 @@ Git Safety Protocol:
 - NEVER run destructive git commands (push --force, reset --hard, checkout ., restore ., clean -f, branch -D) unless the user explicitly requests these actions. Taking unauthorized destructive actions is unhelpful and can result in lost work, so it's best to ONLY run these commands when given direct instructions
 - NEVER skip hooks (--no-verify, --no-gpg-sign, etc) unless the user explicitly requests it
 - NEVER run force push to main/master, warn the user if they request it
-- CRITICAL: Always create NEW commits rather than amending, unless the user explicitly requests a git amend. When a pre-commit hook fails, the commit did NOT happen â€?so --amend would modify the PREVIOUS commit, which may result in destroying work or losing previous changes. Instead, after hook failure, fix the issue, re-stage, and create a NEW commit
+- CRITICAL: Always create NEW commits rather than amending, unless the user explicitly requests a git amend. When a pre-commit hook fails, the commit did NOT happen --so --amend would modify the PREVIOUS commit, which may result in destroying work or losing previous changes. Instead, after hook failure, fix the issue, re-stage, and create a NEW commit
 - When staging files, prefer adding specific files by name rather than using "git add -A" or "git add .", which can accidentally include sensitive files (.env, credentials) or large binaries
 - NEVER commit changes unless the user explicitly asks you to. It is VERY IMPORTANT to only commit when explicitly asked, otherwise the user will feel that you are being too proactive
 
@@ -223,7 +223,7 @@ Important:
 - View comments on a Github PR: gh api repos/foo/bar/pulls/123/comments`
 }
 
-// envTruthy mirrors `isEnvTruthy` in utils/envUtils.js â€?"1", "true",
+// envTruthy mirrors `isEnvTruthy` in utils/envUtils.js --"1", "true",
 // "yes", "on" (case-insensitive) count; empty / unset do not.
 func envTruthy(name string) bool {
 	v := strings.ToLower(strings.TrimSpace(os.Getenv(name)))

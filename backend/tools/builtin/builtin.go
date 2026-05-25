@@ -6,7 +6,7 @@ package builtin
 import (
 	"runtime"
 
-	"github.com/ubuildingagent/backend/tools"
+	tool "github.com/ubuildingagent/backend/tools"
 	"github.com/ubuildingagent/backend/tools/agenttool"
 	"github.com/ubuildingagent/backend/tools/askuser"
 	"github.com/ubuildingagent/backend/tools/bash"
@@ -101,7 +101,7 @@ func AllTools(opts ...Options) tool.Tools {
 		planmode.NewEnter(),
 		// BriefTool = SendUserMessage; host wires EventBrief to its UI.
 		brief.New(),
-		// MCP resource tools (nil-safe â€?they error cleanly without a registry).
+		// MCP resource tools (nil-safe --they error cleanly without a registry).
 		mcp.NewListTool(),
 		mcp.NewReadTool(),
 		// Background-shell tools.
@@ -124,6 +124,27 @@ func AllTools(opts ...Options) tool.Tools {
 func RegisterAll(r *tool.Registry, opts ...Options) {
 	for _, t := range AllTools(opts...) {
 		r.Register(t, tool.WithBuiltin())
+	}
+}
+
+// AllDefinitions wraps every tool from AllTools in a bare ToolDefinition.
+// Callers that need PromptFn / RenderResult / Guidelines can replace individual
+// entries before passing the slice to RegisterAllDefinitions.
+func AllDefinitions(opts ...Options) []tool.ToolDefinition {
+	raw := AllTools(opts...)
+	defs := make([]tool.ToolDefinition, len(raw))
+	for i, t := range raw {
+		defs[i] = tool.ToolDefinition{ToolImpl: t}
+	}
+	return defs
+}
+
+// RegisterAllDefinitions installs every ToolDefinition into r.
+// It honours all ToolDefinition fields (PromptFn, RenderResult, Guidelines)
+// by storing the definitions separately; the registry receives the core Tool.
+func RegisterAllDefinitions(r *tool.Registry, defs []tool.ToolDefinition, opts ...Options) {
+	for _, d := range defs {
+		r.RegisterDefinition(d, tool.WithBuiltin())
 	}
 }
 

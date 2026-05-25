@@ -151,7 +151,7 @@ func (t *BrowserTool) doDetectGoogleCaptcha(in *Input) string {
 }
 
 // doWaitGoogleChallenge waits for a Google CAPTCHA/sorry page to be resolved.
-// Three-phase approach: detect â†?handle â†?verify (mirrors CF bypass architecture).
+// Three-phase approach: detect --handle --verify (mirrors CF bypass architecture).
 func (t *BrowserTool) doWaitGoogleChallenge(in *Input) string {
 	s, page, err := t.getSessionAndPage(in)
 	if err != nil {
@@ -187,7 +187,7 @@ func (t *BrowserTool) doWaitGoogleChallenge(in *Input) string {
 		}
 
 	case GoogleChallengeSorryPage:
-		// Sorry page â€?try waiting, then suggest mitigation
+		// Sorry page --try waiting, then suggest mitigation
 		// Attempt: wait for a manual solve or auto-retry with delay
 		for time.Now().Before(deadline) {
 			time.Sleep(time.Duration(2000+rand.Intn(1000)) * time.Millisecond)
@@ -198,7 +198,7 @@ func (t *BrowserTool) doWaitGoogleChallenge(in *Input) string {
 					info.URL, info.Title, time.Since(deadline.Add(-timeout)))
 			}
 		}
-		// Timed out â€?provide actionable guidance
+		// Timed out --provide actionable guidance
 		return fmt.Sprintf("Google sorry page NOT resolved within %v.\n"+
 			"  URL: %s\n  Title: %s\n"+
 			"  Challenge type: %s\n\n"+
@@ -210,7 +210,7 @@ func (t *BrowserTool) doWaitGoogleChallenge(in *Input) string {
 			timeout, info.URL, info.Title, challengeType)
 
 	case GoogleChallengeRecaptcha:
-		// reCAPTCHA â€?screenshot + wait for manual solve
+		// reCAPTCHA --screenshot + wait for manual solve
 		if !s.Headless {
 			// Non-headless: wait for user to solve
 			for time.Now().Before(deadline) {

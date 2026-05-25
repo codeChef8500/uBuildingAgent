@@ -2,7 +2,7 @@ package browser
 
 import "encoding/json"
 
-// Action constants â€?all supported browser actions.
+// Action constants --all supported browser actions.
 const (
 	// Session management
 	ActionCreateSession = "create_session"

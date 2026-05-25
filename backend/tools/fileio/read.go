@@ -205,7 +205,7 @@ func renderReadOutput(content interface{}) string {
 		return out.Content
 	}
 	if out.Truncated {
-		return out.Content + fmt.Sprintf("\nâ€?(truncated at line %d; total %d lines)\n", out.OffsetUsed+out.LimitUsed-1, out.TotalLines)
+		return out.Content + fmt.Sprintf("\n--(truncated at line %d; total %d lines)\n", out.OffsetUsed+out.LimitUsed-1, out.TotalLines)
 	}
 	return out.Content
 }
@@ -252,7 +252,7 @@ func renderWithLineNumbers(data []byte, offset, limit int) (content string, tota
 		}
 		line := scanner.Text()
 		if len(line) > MaxLineLength {
-			line = line[:MaxLineLength] + "â€?
+			line = line[:MaxLineLength] + "--"
 		}
 		fmt.Fprintf(&sb, "%6d\t%s\n", lineNum, line)
 		emitted++

@@ -52,7 +52,7 @@ func TestBrief_ProactiveSectionKeywords(t *testing.T) {
 		"## Talking to the user",
 		Name,
 		"Even for \"hi\"",
-		"ack â†?work â†?result",
+		"ack --work --result",
 		"Second person always",
 	} {
 		if !strings.Contains(sec, want) {

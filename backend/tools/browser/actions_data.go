@@ -216,7 +216,7 @@ func (t *BrowserTool) doScreenshot(in *Input) string {
 		return fmt.Sprintf("Screenshot saved: %s (%d bytes)", saveTo, len(data))
 	}
 
-	// Workspace not set â€?return as base64
+	// Workspace not set --return as base64
 	b64 := base64.StdEncoding.EncodeToString(data)
 	if len(b64) > 100000 {
 		b64 = b64[:100000] + "... (truncated)"

@@ -132,7 +132,7 @@ func (b *BashTool) Description(input json.RawMessage) string {
 	}
 	cmd := in.Command
 	if len(cmd) > 80 {
-		cmd = cmd[:80] + "â€?
+		cmd = cmd[:80] + "--"
 	}
 	return "Bash: " + cmd
 }

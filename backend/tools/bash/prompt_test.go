@@ -58,7 +58,7 @@ func TestBash_PromptEmbeddedDropsFindGrep(t *testing.T) {
 }
 
 func TestBash_PromptBackgroundGate(t *testing.T) {
-	// Upstream only gates the "usage note" paragraph â€?the sleep
+	// Upstream only gates the "usage note" paragraph --the sleep
 	// subitems that reference `run_in_background` remain, mirroring
 	// claude-code-main/BashTool/prompt.ts. Assert on the gated
 	// paragraph specifically.

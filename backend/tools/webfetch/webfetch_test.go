@@ -199,7 +199,7 @@ func (s *spySideQuerier) Query(_ context.Context, _ string, opts SideQueryOpts) 
 	return &SideQueryResult{Text: s.returnStr}, nil
 }
 
-// TestCall_PreapprovedSkipsSideQuerier â€?the T-I1 passthrough path.
+// TestCall_PreapprovedSkipsSideQuerier --the T-I1 passthrough path.
 // We simulate a preapproved URL (go.dev is in preapproved list) by pointing
 // the client at our httptest server with a URL rewrite. Simpler: override
 // IsPreapprovedHost by picking any preapproved hostname in the request.
@@ -280,7 +280,7 @@ func TestCall_CrossHostRedirectTemplate(t *testing.T) {
 	}
 }
 
-// TestApplyPrompt_GuardrailsDifferByHost â€?T-I2 compliance template.
+// TestApplyPrompt_GuardrailsDifferByHost --T-I2 compliance template.
 func TestApplyPrompt_GuardrailsDifferByHost(t *testing.T) {
 	spyPre := &spySideQuerier{returnStr: "x"}
 	spyExt := &spySideQuerier{returnStr: "x"}

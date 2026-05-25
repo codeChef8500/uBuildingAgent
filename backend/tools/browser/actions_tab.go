@@ -67,7 +67,7 @@ func (t *BrowserTool) doListTabs(in *Input) string {
 			active = " [ACTIVE]"
 		}
 		info := safeInfo(p)
-		lines = append(lines, fmt.Sprintf("  %s%s: %s â€?%s", id, active, truncStr(info.Title, 40), truncStr(info.URL, 60)))
+		lines = append(lines, fmt.Sprintf("  %s%s: %s --%s", id, active, truncStr(info.Title, 40), truncStr(info.URL, 60)))
 	}
 	return strings.Join(lines, "\n")
 }
@@ -129,7 +129,7 @@ func (t *BrowserTool) doCloseTab(in *Input) string {
 	}
 
 	if len(s.pages) == 0 {
-		return fmt.Sprintf("Tab %s closed. No tabs remaining â€?session may need closing.", in.TabID)
+		return fmt.Sprintf("Tab %s closed. No tabs remaining --session may need closing.", in.TabID)
 	}
 	return fmt.Sprintf("Tab %s closed. Active tab: %s", in.TabID, s.activeTab)
 }

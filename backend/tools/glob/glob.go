@@ -171,7 +171,7 @@ func renderOutput(content interface{}) string {
 		sb.WriteByte('\n')
 	}
 	if out.Truncated {
-		sb.WriteString("â€?(truncated)\n")
+		sb.WriteString("--(truncated)\n")
 	}
 	return sb.String()
 }

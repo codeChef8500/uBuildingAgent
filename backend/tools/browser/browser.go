@@ -126,11 +126,11 @@ func (t *BrowserTool) Prompt(_ tool.PromptOptions) string {
 	return `Browser automation tool with DrissionPage-style locators.
 
 Use "action" to specify what to do. Common workflow:
-  1. create_session â€?launch browser (headless by default)
-  2. navigate â€?go to URL
-  3. find_element / smart_click / input â€?interact with page
-  4. screenshot / get_html / snapshot â€?extract data
-  5. close_session â€?release resources
+  1. create_session --launch browser (headless by default)
+  2. navigate --go to URL
+  3. find_element / smart_click / input --interact with page
+  4. screenshot / get_html / snapshot --extract data
+  5. close_session --release resources
 
 Locator syntax (set via "locator" field):
   CSS:       #id  .class  css=div>span
@@ -154,9 +154,9 @@ Key actions:
 Google Search anti-block workflow (recommended):
   1. create_session(headless=false, user_data_dir="~/.chrome-profile")
   2. navigate(url="https://www.google.com/search?q=...", google_auto_consent=true)
-  3. detect_google_captcha â†?check if blocked
-  4. wait_google_challenge(google_challenge_timeout=60000) â†?wait/handle if blocked
-  5. find_elements / get_html / snapshot â†?extract results`
+  3. detect_google_captcha --check if blocked
+  4. wait_google_challenge(google_challenge_timeout=60000) --wait/handle if blocked
+  5. find_elements / get_html / snapshot --extract results`
 }
 
 func (t *BrowserTool) ValidateInput(input json.RawMessage, _ *agents.ToolUseContext) *tool.ValidationResult {

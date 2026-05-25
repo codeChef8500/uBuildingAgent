@@ -12,7 +12,7 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// Orchestrator â€?manages concurrent/serial tool execution
+// Orchestrator --manages concurrent/serial tool execution
 // Maps to TypeScript toolOrchestration.ts (runTools + partitionToolCalls)
 // ---------------------------------------------------------------------------
 
@@ -214,7 +214,7 @@ type SingleToolResult struct {
 type CanUseToolFn func(toolName string, input json.RawMessage, toolCtx *agents.ToolUseContext) *PermissionResult
 
 // executeSingleTool runs a single tool call through the full pipeline:
-// find tool â†?validate input â†?check permissions â†?call â†?collect result.
+// find tool --validate input --check permissions --call --collect result.
 // Maps to TypeScript's runToolUse in toolExecution.ts.
 func (o *Orchestrator) executeSingleTool(
 	ctx context.Context,

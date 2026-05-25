@@ -217,7 +217,7 @@ func TestPrompt_ContainsSourcesAndCurrentYear(t *testing.T) {
 	if !strings.Contains(p, "[Title](URL)") {
 		t.Error("prompt must show markdown hyperlink example")
 	}
-	// Current month/year from time.Now() â€?sanity check: 4-digit year is present.
+	// Current month/year from time.Now() --sanity check: 4-digit year is present.
 	if !strings.Contains(p, "current month is") {
 		t.Error("prompt must mention current month")
 	}

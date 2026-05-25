@@ -17,14 +17,14 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// WebFetchTool â€?provider-agnostic URL fetcher. Maps to claude-code-main's
+// WebFetchTool --provider-agnostic URL fetcher. Maps to claude-code-main's
 // tools/WebFetchTool, retaining the preapproved host list, SSRF guard,
 // blocklist, in-memory cache, cross-host redirect template, and optional
 // SideQuerier summarization (with compliance guardrails).
 //
 // Dropped from the upstream implementation:
 //   - Anthropic domain_info preflight (tight coupling, not portable)
-//   - PDF inline extraction (ledongthuc/pdf) â€?returns a placeholder instead
+//   - PDF inline extraction (ledongthuc/pdf) --returns a placeholder instead
 //   - React progress UI hooks
 // ---------------------------------------------------------------------------
 
@@ -59,7 +59,7 @@ type Output struct {
 }
 
 // SideQuerier performs an auxiliary LLM call to summarize/transform fetched
-// content. Leaving it nil disables the summarization path â€?the raw content
+// content. Leaving it nil disables the summarization path --the raw content
 // is returned directly.
 type SideQuerier interface {
 	Query(ctx context.Context, prompt string, opts SideQueryOpts) (*SideQueryResult, error)
@@ -243,7 +243,7 @@ func (t *WebFetchTool) CheckPermissions(input json.RawMessage, _ *agents.ToolUse
 		}
 	}
 
-	// Preapproved hosts â€?fast allow without nagging the user.
+	// Preapproved hosts --fast allow without nagging the user.
 	if IsPreapprovedURL(in.URL) {
 		return &tool.PermissionResult{
 			Behavior:       tool.PermissionAllow,
@@ -286,7 +286,7 @@ func (t *WebFetchTool) Call(ctx context.Context, input json.RawMessage, _ *agent
 		}}, nil
 	}
 
-	// http â†?https upgrade. Skipped when loopback is explicitly allowed, so
+	// http --https upgrade. Skipped when loopback is explicitly allowed, so
 	// httptest servers (which only speak HTTP) remain reachable.
 	fetchURL := in.URL
 	if !t.allowLoopback {
@@ -303,7 +303,7 @@ func (t *WebFetchTool) Call(ctx context.Context, input json.RawMessage, _ *agent
 		return nil, err
 	}
 
-	// Cross-host redirect â€?return guidance instead of silently following.
+	// Cross-host redirect --return guidance instead of silently following.
 	if redir != nil {
 		statusText := http.StatusText(redir.StatusCode)
 		msg := fmt.Sprintf("REDIRECT DETECTED: The URL redirects to a different host.\n\n"+
@@ -376,13 +376,13 @@ func (t *WebFetchTool) Call(ctx context.Context, input json.RawMessage, _ *agent
 func processBody(body []byte, contentType string, in Input) string {
 	ct := strings.ToLower(contentType)
 
-	// Non-inlined binary content (PDFs, images) â€?claude-code persists these
+	// Non-inlined binary content (PDFs, images) --claude-code persists these
 	// to disk; we just describe them for the model.
 	if strings.Contains(ct, "application/pdf") ||
 		strings.HasSuffix(strings.ToLower(in.URL), ".pdf") ||
 		strings.HasPrefix(ct, "image/") ||
 		strings.HasPrefix(ct, "application/octet-stream") {
-		return fmt.Sprintf("[Binary content (%s, %d bytes) â€?not inlined. Use a specialized tool to analyze this resource.]", contentTypeLabel(contentType), len(body))
+		return fmt.Sprintf("[Binary content (%s, %d bytes) --not inlined. Use a specialized tool to analyze this resource.]", contentTypeLabel(contentType), len(body))
 	}
 
 	format := in.Format
@@ -443,7 +443,7 @@ func extractResultText(content interface{}) string {
 }
 
 // applyPromptToContent asks the SideQuerier to extract the requested info.
-// The guidelines differ for preapproved vs. external hosts â€?external hosts
+// The guidelines differ for preapproved vs. external hosts --external hosts
 // get a stricter compliance template (claude-code's WebFetchTool approach).
 func applyPromptToContent(ctx context.Context, sq SideQuerier, prompt, content string, preapproved bool) (string, error) {
 	const maxContentForSummary = 50_000

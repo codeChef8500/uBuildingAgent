@@ -78,8 +78,8 @@ func TestFallbackProvider(t *testing.T) {
 			&mockProvider{name: "Brave"},
 			&mockProvider{name: "DuckDuckGo"},
 		)
-		if p.Name() != "Brave â†?DuckDuckGo" {
-			t.Errorf("expected 'Brave â†?DuckDuckGo', got %q", p.Name())
+		if p.Name() != "Brave --DuckDuckGo" {
+			t.Errorf("expected 'Brave --DuckDuckGo', got %q", p.Name())
 		}
 	})
 }

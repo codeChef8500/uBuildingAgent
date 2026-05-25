@@ -118,11 +118,11 @@ func (t *OutputTool) InputSchema() *tool.JSONSchema {
 }
 
 func (t *OutputTool) Description(_ json.RawMessage) string {
-	return "[Deprecated] �?prefer Read on the task output file path"
+	return "[Deprecated] --prefer Read on the task output file path"
 }
 
 func (t *OutputTool) Prompt(_ tool.PromptOptions) string {
-	return `DEPRECATED: Prefer using the Read tool on the task's output file path instead. Background tasks return their output file path in the tool result, and you receive a <task-notification> with the same path when the task completes �?Read that file directly.
+	return `DEPRECATED: Prefer using the Read tool on the task's output file path instead. Background tasks return their output file path in the tool result, and you receive a <task-notification> with the same path when the task completes --Read that file directly.
 
 - Retrieves output from a running or completed task (background shell, agent, or remote session)
 - Takes a ` + "`task_id`" + ` parameter identifying the task (legacy aliases ` + "`bash_id`" + ` / ` + "`agentId`" + ` are accepted for backwards compatibility)
@@ -232,7 +232,7 @@ func (t *StopTool) IsReadOnly(_ json.RawMessage) bool        { return false }
 func (t *StopTool) IsConcurrencySafe(_ json.RawMessage) bool { return true }
 func (t *StopTool) IsDestructive(_ json.RawMessage) bool     { return true }
 
-// Aliases mirrors upstream's KillShell �?TaskStop rename.
+// Aliases mirrors upstream's KillShell --TaskStop rename.
 func (t *StopTool) Aliases() []string { return []string{"KillShell"} }
 
 func (t *StopTool) InputSchema() *tool.JSONSchema {
@@ -324,7 +324,7 @@ func renderStop(content interface{}) string {
 		b, _ := json.Marshal(content)
 		return string(b)
 	}
-	return fmt.Sprintf("Stopped %s (%s) �?%s", r.ID, r.Kind, r.Status)
+	return fmt.Sprintf("Stopped %s (%s) --%s", r.ID, r.Kind, r.Status)
 }
 
 // ──────────────────────────────────────────────────────────────────────────

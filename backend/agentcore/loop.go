@@ -612,6 +612,17 @@ func executeSingleTool(
 				Call:     tc,
 				Args:     tc.Arguments,
 				AgentCtx: conv,
+				OnUpdate: func(partial *AgentToolResult) {
+					emit(ch, AgentEvent{
+						Type: AgentEventToolUpdate,
+						ToolCall: &ToolCallEvent{
+							ID:            tc.ID,
+							Name:          tc.Name,
+							Arguments:     tc.Arguments,
+							PartialResult: partial,
+						},
+					})
+				},
 			}
 			toolResult = found.Execute(texCtx)
 			isError = toolResult.IsError

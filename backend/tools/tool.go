@@ -8,7 +8,7 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// Tool interface â€?maps to TypeScript Tool<Input, Output, P> from Tool.ts
+// Tool interface --maps to TypeScript Tool<Input, Output, P> from Tool.ts
 // ---------------------------------------------------------------------------
 
 // Tool defines the contract for all tools in the agent engine.
@@ -184,7 +184,7 @@ type PromptOptions struct {
 	// `agents.ForkSubagentEnabled()`.
 	ForkEnabled bool
 
-	// SandboxEnabled toggles the Bash sandbox block. Off by default â€?the
+	// SandboxEnabled toggles the Bash sandbox block. Off by default --the
 	// Go backend does not yet ship a sandbox implementation.
 	SandboxEnabled bool
 
@@ -214,7 +214,7 @@ type PromptOptions struct {
 	PlanModeInterviewEnabled bool
 
 	// AgentToolIsCoordinator toggles the slim coordinator branch of the
-	// Task/AgentTool prompt (getPrompt(â€? isCoordinator=true)).
+	// Task/AgentTool prompt (getPrompt(-- isCoordinator=true)).
 	AgentToolIsCoordinator bool
 
 	// AgentListViaAttachment matches upstream
@@ -222,12 +222,12 @@ type PromptOptions struct {
 	// the inline catalog with a <system-reminder> pointer.
 	AgentListViaAttachment bool
 
-	// IsTeammate mirrors utils/teammate.isTeammate() â€?cross-teammate
+	// IsTeammate mirrors utils/teammate.isTeammate() --cross-teammate
 	// spawning is disabled, so the prompt hides name/team_name/mode.
 	IsTeammate bool
 
 	// IsInProcessTeammate mirrors utils/teammateContext.isInProcessTeammate()
-	// â€?background/name/team_name/mode are all unavailable.
+	// --background/name/team_name/mode are all unavailable.
 	IsInProcessTeammate bool
 
 	// DisableBackgroundTasks mirrors env CLAUDE_CODE_DISABLE_BACKGROUND_TASKS.
@@ -240,7 +240,7 @@ type PromptOptions struct {
 }
 
 // ---------------------------------------------------------------------------
-// ToolDef â€?simplified builder for creating tools with defaults
+// ToolDef --simplified builder for creating tools with defaults
 // ---------------------------------------------------------------------------
 
 // ToolDefaults provides safe default implementations for optional Tool methods.
@@ -260,7 +260,7 @@ func (d ToolDefaults) CheckPermissions(input json.RawMessage, _ *agents.ToolUseC
 }
 
 // ---------------------------------------------------------------------------
-// Tools â€?collection type (matches TypeScript `type Tools = readonly Tool[]`)
+// Tools --collection type (matches TypeScript `type Tools = readonly Tool[]`)
 // ---------------------------------------------------------------------------
 
 // Tools is a slice of Tool. Using a named type makes it easy to track where

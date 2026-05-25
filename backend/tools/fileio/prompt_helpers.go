@@ -7,8 +7,8 @@ import "github.com/ubuildingagent/backend/tools"
 // opts.Tools (host filtered it out) we fall back to the canonical name
 // so the prompt still reads naturally.
 //
-// This is the fileio-local counterpart to prompt.CrossRef â€?we can't
-// import the prompt package here without a cycle (prompt â†?tool â†?fileio).
+// This is the fileio-local counterpart to prompt.CrossRef --we can't
+// import the prompt package here without a cycle (prompt --tool --fileio).
 func resolvePeer(opts tool.PromptOptions, primary string) string {
 	if len(opts.Tools) == 0 {
 		return primary

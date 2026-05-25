@@ -156,7 +156,7 @@ func isDomainBlocked(domain string, blocked map[string]bool) bool {
 	if blocked[domain] {
 		return true
 	}
-	// Check parent domains: sub.example.com â†?example.com
+	// Check parent domains: sub.example.com --example.com
 	parts := strings.Split(domain, ".")
 	for i := 1; i < len(parts)-1; i++ {
 		parent := strings.Join(parts[i:], ".")

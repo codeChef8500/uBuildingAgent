@@ -94,7 +94,7 @@ func TestAgentTool_PromptIncludesAgentCatalog(t *testing.T) {
 	}
 }
 
-// A10 · No catalog installed �?prompt still renders the base description and
+// A10 · No catalog installed --prompt still renders the base description and
 // the empty "Available agent types" header (matches upstream prompt.ts).
 func TestAgentTool_PromptWithoutCatalog(t *testing.T) {
 	at := New()

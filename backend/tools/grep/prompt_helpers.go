@@ -4,7 +4,7 @@ import "github.com/ubuildingagent/backend/tools"
 
 // resolvePeer falls back to the canonical name when the peer tool is not
 // present in opts.Tools. Same pattern as fileio/glob helpers; kept local
-// to avoid a cross-package cycle (prompt â†?tool â†?grep).
+// to avoid a cross-package cycle (prompt --tool --grep).
 func resolvePeer(opts tool.PromptOptions, primary string) string {
 	if len(opts.Tools) == 0 {
 		return primary

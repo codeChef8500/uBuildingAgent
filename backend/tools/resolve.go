@@ -1,4 +1,4 @@
-// Package tool â€?sub-agent tool resolution.
+// Package tool --sub-agent tool resolution.
 //
 // Tasks B01 / B08 Â· port src/tools/AgentTool/agentToolUtils.ts's
 // resolveAgentTools + filterToolsForAgent pair. These are the two gates
@@ -10,7 +10,7 @@
 //     (default `*` / whitelist) followed by its disallow list, producing
 //     the final pool the worker sees.
 //
-// `Agent(type1,type2)` allow-list entries carry metadata, not a tool â€?
+// `Agent(type1,type2)` allow-list entries carry metadata, not a tool --
 // they populate allowedAgentTypes so the Task tool can restrict which
 // subagent_type the child can spawn next.
 package tool
@@ -96,7 +96,7 @@ func FilterToolsForAgent(tools Tools, opts FilterToolsForAgentOpts) Tools {
 
 // ResolvedAgentTools is the result of ResolveAgentTools. Mirrors the TS
 // ResolvedAgentTools shape: valid/invalid entries from the frontmatter,
-// the effective tool pool, and the parsed `Agent(type,â€?` allowed list.
+// the effective tool pool, and the parsed `Agent(type,--` allowed list.
 type ResolvedAgentTools struct {
 	HasWildcard       bool
 	ValidTools        []string
@@ -110,13 +110,13 @@ type ResolvedAgentTools struct {
 //
 //  1. Apply FilterToolsForAgent unless isMainThread is true.
 //  2. Apply the agent's DisallowedTools list (parsed via
-//     permission.ParseRuleValue so `Bash(â€?` patterns map back to the tool
+//     permission.ParseRuleValue so `Bash(--` patterns map back to the tool
 //     name).
 //  3. Apply the agent's Tools allow list. Empty or ["*"] means "allow all
 //     remaining"; otherwise match exact names. `Agent(a,b)` entries
 //     populate AllowedAgentTypes and are dropped from the resolved pool.
 //  4. Deduplicate resolved tools by name (built-ins win over later
-//     duplicates â€?same ordering guarantee the TS version provides via a
+//     duplicates --same ordering guarantee the TS version provides via a
 //     Set).
 //
 // `isMainThread` is kept for parity with TS's main-thread path; leave it
@@ -140,7 +140,7 @@ func ResolveAgentTools(
 		})
 	}
 
-	// Step 2 â€?deny list.
+	// Step 2 --deny list.
 	denyLookup := make(map[string]struct{}, len(agent.DisallowedTools))
 	for _, spec := range agent.DisallowedTools {
 		denyLookup[permission.ParseRuleValue(spec).Tool] = struct{}{}
@@ -153,7 +153,7 @@ func ResolveAgentTools(
 		afterDeny = append(afterDeny, t)
 	}
 
-	// Step 3 â€?allow list.
+	// Step 3 --allow list.
 	hasWildcard := len(agent.Tools) == 0 ||
 		(len(agent.Tools) == 1 && strings.TrimSpace(agent.Tools[0]) == "*")
 	if hasWildcard {
@@ -173,7 +173,7 @@ func ResolveAgentTools(
 	seen := make(map[string]struct{}, len(agent.Tools))
 	for _, spec := range agent.Tools {
 		rv := permission.ParseRuleValue(spec)
-		// Special-case Agent(x,y) â€?metadata, not a tool.
+		// Special-case Agent(x,y) --metadata, not a tool.
 		if rv.Tool == "Task" || rv.Tool == "Agent" {
 			if rv.HasArgs {
 				out.AllowedAgentTypes = append(out.AllowedAgentTypes, permission.ParseCommaList(rv.Pattern)...)

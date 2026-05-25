@@ -36,6 +36,7 @@ const (
 	AgentEventThinkingDelta AgentEventType = "thinking_delta"
 	AgentEventToolStart     AgentEventType = "tool_start"
 	AgentEventToolEnd       AgentEventType = "tool_end"
+	AgentEventToolUpdate    AgentEventType = "tool_update"
 	AgentEventTurnEnd       AgentEventType = "turn_end"
 	AgentEventContextPatch  AgentEventType = "context_patch"
 	AgentEventEnd           AgentEventType = "agent_end"
@@ -55,11 +56,12 @@ type AgentEvent struct {
 
 // ToolCallEvent carries tool-call lifecycle data in an AgentEvent.
 type ToolCallEvent struct {
-	ID        string           `json:"id"`
-	Name      string           `json:"name"`
-	Arguments json.RawMessage  `json:"arguments,omitempty"`
-	Result    *AgentToolResult `json:"result,omitempty"`
-	IsError   bool             `json:"is_error,omitempty"`
+	ID            string           `json:"id"`
+	Name          string           `json:"name"`
+	Arguments     json.RawMessage  `json:"arguments,omitempty"`
+	Result        *AgentToolResult `json:"result,omitempty"`
+	PartialResult *AgentToolResult `json:"partial_result,omitempty"`
+	IsError       bool             `json:"is_error,omitempty"`
 }
 
 // ── Tool ─────────────────────────────────────────────────────────────────
@@ -122,6 +124,11 @@ type ToolExecContext struct {
 	Call     llmprovider.ToolCall
 	Args     json.RawMessage // parsed arguments (same as Call.Arguments)
 	AgentCtx *AgentContext
+
+	// OnUpdate, when non-nil, is called by tools to emit an intermediate
+	// (streaming) result before the final AgentToolResult is returned.
+	// The loop emits AgentEventToolUpdate for each call.
+	OnUpdate func(partial *AgentToolResult) `json:"-"`
 }
 
 // AgentToolResult is returned by AgentTool.Execute.

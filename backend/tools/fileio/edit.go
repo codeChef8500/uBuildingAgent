@@ -74,7 +74,7 @@ func (e *EditTool) Prompt(opts tool.PromptOptions) string {
 	readRef := resolvePeer(opts, "Read")
 	minimalUniquenessHint := ""
 	if opts.UserType == "ant" {
-		minimalUniquenessHint = "\n- Use the smallest old_string that's clearly unique â€?usually 2-4 adjacent lines is sufficient. Avoid including 10+ lines of context when less uniquely identifies the target."
+		minimalUniquenessHint = "\n- Use the smallest old_string that's clearly unique --usually 2-4 adjacent lines is sufficient. Avoid including 10+ lines of context when less uniquely identifies the target."
 	}
 	return `Performs exact string replacements in files.
 

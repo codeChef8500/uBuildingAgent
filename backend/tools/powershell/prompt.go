@@ -18,7 +18,7 @@ import (
 //   - desktop (Windows PowerShell 5.1): no pipeline chain operators
 //     (`&&`/`||`), no ternary, ASCII output defaults. We warn the model
 //     explicitly.
-//   - core (PowerShell 7+): `&&`/`||`, ternary, UTF-8 output â€?we tell
+//   - core (PowerShell 7+): `&&`/`||`, ternary, UTF-8 output --we tell
 //     the model it is safe to use them.
 //   - unknown / not detected: we stay conservative and emit the 5.1
 //     guidance.
@@ -51,7 +51,7 @@ func buildPrompt(opts tool.PromptOptions) string {
 
 	syntaxSubitems := []string{
 		"Use PowerShell cmdlet syntax: `Get-ChildItem`, `Select-String`, `ForEach-Object`.",
-		"Prefer explicit cmdlet names over aliases (ls/cat/grep) â€?aliases are 5.1-only or not always present.",
+		"Prefer explicit cmdlet names over aliases (ls/cat/grep) --aliases are 5.1-only or not always present.",
 		"Always quote paths with spaces using double quotes: `Set-Location \"C:\\path with spaces\"`.",
 		"Escape `$` inside double-quoted strings when you do not want variable expansion: use backtick (`` `$ ``) or single quotes.",
 		"Exit codes: PowerShell sets `$LASTEXITCODE` for native binaries; cmdlets use exceptions. Check both when chaining.",
@@ -63,17 +63,17 @@ func buildPrompt(opts tool.PromptOptions) string {
 	}
 	if edition == shell.EditionCore {
 		multipleCommandsSubitems = append(multipleCommandsSubitems,
-			"Chain with `&&` / `||` (pipeline chain operators) â€?supported in PowerShell 7+.",
+			"Chain with `&&` / `||` (pipeline chain operators) --supported in PowerShell 7+.",
 			"Use `;` for unconditional sequencing (runs the next command regardless of exit status).",
 		)
 	} else {
 		multipleCommandsSubitems = append(multipleCommandsSubitems,
-			"`&&` / `||` are NOT available in Windows PowerShell 5.1 â€?use `if ($LASTEXITCODE -eq 0) { ... }` or `-and` / `-or` in script blocks.",
+			"`&&` / `||` are NOT available in Windows PowerShell 5.1 --use `if ($LASTEXITCODE -eq 0) { ... }` or `-and` / `-or` in script blocks.",
 			"Use `;` for unconditional sequencing (runs the next command regardless of exit status).",
 		)
 	}
 	multipleCommandsSubitems = append(multipleCommandsSubitems,
-		"DO NOT use newlines to separate commands â€?pass a script block or chain on a single line.",
+		"DO NOT use newlines to separate commands --pass a script block or chain on a single line.",
 	)
 
 	gitSubitems := []string{
@@ -83,10 +83,10 @@ func buildPrompt(opts tool.PromptOptions) string {
 	}
 
 	sleepSubitems := []string{
-		"Do not `Start-Sleep` between commands that can run immediately â€?just run them.",
-		"If your command is long running and you would like to be notified when it finishes â€?use `run_in_background`. No sleep needed.",
-		"Do not retry failing commands in a sleep loop â€?diagnose the root cause.",
-		"If waiting for a background task you started with `run_in_background`, you will be notified when it completes â€?do not poll.",
+		"Do not `Start-Sleep` between commands that can run immediately --just run them.",
+		"If your command is long running and you would like to be notified when it finishes --use `run_in_background`. No sleep needed.",
+		"Do not retry failing commands in a sleep loop --diagnose the root cause.",
+		"If waiting for a background task you started with `run_in_background`, you will be notified when it completes --do not poll.",
 	}
 
 	var instructionItems []interface{}
@@ -120,7 +120,7 @@ func buildPrompt(opts tool.PromptOptions) string {
 	sb.WriteString("# Instructions\n")
 	writeItems(&sb, instructionItems, "")
 
-	// Commit & PR section â€?reuse the Bash-style long form, substituting
+	// Commit & PR section --reuse the Bash-style long form, substituting
 	// PowerShell-specific HEREDOC guidance (here-strings).
 	sb.WriteString("\n")
 	sb.WriteString(commitAndPRSection(shellRef, todoRef, agentRef))
@@ -136,7 +136,7 @@ func buildEditionNotes(edition string) string {
 	case shell.EditionCore:
 		return "## PowerShell edition\nDetected PowerShell 7+ (`pwsh`). You may use pipeline chain operators (`&&` / `||`), the ternary operator (`a ? b : c`), and null-coalescing (`??`). Default output encoding is UTF-8."
 	case shell.EditionDesktop:
-		return "## PowerShell edition\nDetected Windows PowerShell 5.1 (`powershell.exe`). `&&` / `||` are NOT available â€?use `if ($LASTEXITCODE -eq 0) { ... }` or `-and` / `-or` in script blocks. Ternary and null-coalescing operators are also unavailable. Output defaults to the system code page; use `[Console]::OutputEncoding = [Text.Encoding]::UTF8` if you need UTF-8."
+		return "## PowerShell edition\nDetected Windows PowerShell 5.1 (`powershell.exe`). `&&` / `||` are NOT available --use `if ($LASTEXITCODE -eq 0) { ... }` or `-and` / `-or` in script blocks. Ternary and null-coalescing operators are also unavailable. Output defaults to the system code page; use `[Console]::OutputEncoding = [Text.Encoding]::UTF8` if you need UTF-8."
 	default:
 		return "## PowerShell edition\nEdition could not be detected. Assume Windows PowerShell 5.1 syntax: `&&` / `||` are NOT available, use `if ($LASTEXITCODE -eq 0) { ... }` or `-and` / `-or` instead. Ternary / null-coalescing operators are also unavailable."
 	}
@@ -202,7 +202,7 @@ Important notes:
 - If there are no changes to commit, do not create an empty commit
 
 # Creating pull requests
-Use ` + "`gh`" + ` (or ` + "`gh.exe`" + `) via the ` + shellRef + ` tool for all GitHub tasks â€?issues, pull requests, checks, releases. If given a GitHub URL, use ` + "`gh`" + ` to fetch the info you need.
+Use ` + "`gh`" + ` (or ` + "`gh.exe`" + `) via the ` + shellRef + ` tool for all GitHub tasks --issues, pull requests, checks, releases. If given a GitHub URL, use ` + "`gh`" + ` to fetch the info you need.
 
 1. Run the following in parallel to understand branch state:
    - ` + "`git status`" + ` (no -uall)

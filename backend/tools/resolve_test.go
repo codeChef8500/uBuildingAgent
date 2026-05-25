@@ -101,7 +101,7 @@ func TestFilterToolsForAgent_AsyncRestricted(t *testing.T) {
 
 func TestFilterToolsForAgent_CustomExtraDeny(t *testing.T) {
 	tools := fakeTools("Read", "Task", "Edit")
-	// Custom agent â€?baseline still removes Task. (CustomAgentDisallowedTools
+	// Custom agent --baseline still removes Task. (CustomAgentDisallowedTools
 	// currently == baseline, but assert the call path uses the custom switch.)
 	got := FilterToolsForAgent(tools, FilterToolsForAgentOpts{IsBuiltIn: false})
 	want := []string{"Edit", "Read"}

@@ -9,7 +9,7 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// ProviderSideQuerier â€?an adapter that plugs any agents.CallModel function
+// ProviderSideQuerier --an adapter that plugs any agents.CallModel function
 // into the WebFetch SideQuerier contract. Maps to claude-code-main's pattern
 // of re-using the primary provider for the WebFetchTool summarization call
 // (instead of hard-coding a Haiku/mini-model preset).
@@ -27,7 +27,7 @@ type ProviderSideQuerier struct {
 }
 
 // NewProviderSideQuerier constructs an adapter. The model argument is
-// informational â€?the underlying deps/provider ultimately picks the actual
+// informational --the underlying deps/provider ultimately picks the actual
 // model. Pass "" to rely on the deps default.
 func NewProviderSideQuerier(call CallModelFn, model string) *ProviderSideQuerier {
 	return &ProviderSideQuerier{call: call, model: model}

@@ -48,6 +48,6 @@ func TestClickCFChallengeIframeNilPage(t *testing.T) {
 	// with a nil-safe approach. Since we can't create a real rod.Page in unit tests,
 	// we verify the function signature and type existence.
 	var _ func(page interface{}) // placeholder for type check
-	// The actual integration test requires a browser â€?covered by manual/E2E testing.
+	// The actual integration test requires a browser --covered by manual/E2E testing.
 	t.Log("clickCFChallengeIframe signature verified")
 }

@@ -302,7 +302,7 @@ func handleRoutedRequest(s *BrowserSession, page *rod.Page, e *proto.FetchReques
 	s.mu.RUnlock()
 
 	if matched == nil {
-		// No route matched â€?continue normally
+		// No route matched --continue normally
 		_ = proto.FetchContinueRequest{RequestID: e.RequestID}.Call(page)
 		return
 	}
@@ -346,7 +346,7 @@ func handleRoutedRequest(s *BrowserSession, page *rod.Page, e *proto.FetchReques
 			Headers:   headers,
 		}.Call(page)
 	default:
-		// "continue" or unknown â€?pass through
+		// "continue" or unknown --pass through
 		_ = proto.FetchContinueRequest{RequestID: e.RequestID}.Call(page)
 	}
 }

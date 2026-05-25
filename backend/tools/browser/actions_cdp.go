@@ -267,9 +267,9 @@ func (t *BrowserTool) doGetNavHistory(in *Input) string {
 	for i, e := range res.Entries {
 		marker := "  "
 		if i == res.CurrentIndex {
-			marker = "â†?"
+			marker = "--"
 		}
-		lines = append(lines, fmt.Sprintf("  %s[%d] %s â€?%s", marker, i, truncStr(e.Title, 40), truncStr(e.URL, 60)))
+		lines = append(lines, fmt.Sprintf("  %s[%d] %s --%s", marker, i, truncStr(e.Title, 40), truncStr(e.URL, 60)))
 	}
 	return strings.Join(lines, "\n")
 }

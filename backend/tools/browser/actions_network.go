@@ -288,7 +288,7 @@ func formatPackets(packets []*DataPacket) string {
 			lines = append(lines, fmt.Sprintf("  ... and %d more", len(packets)-20))
 			break
 		}
-		lines = append(lines, fmt.Sprintf("  [%d] %s %s â†?%d (%s)",
+		lines = append(lines, fmt.Sprintf("  [%d] %s %s --%d (%s)",
 			i, p.Method, truncStr(p.URL, 80), p.Status, p.ResourceType))
 		if p.ResponseBody != "" {
 			body := p.ResponseBody

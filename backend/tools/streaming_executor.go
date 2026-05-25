@@ -11,7 +11,7 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// StreamingToolExecutor â€?executes tools as they stream in with concurrency control
+// StreamingToolExecutor --executes tools as they stream in with concurrency control
 // Maps to TypeScript StreamingToolExecutor in StreamingToolExecutor.ts
 // ---------------------------------------------------------------------------
 
@@ -115,7 +115,7 @@ func (e *StreamingToolExecutor) AddTool(block agents.ToolUseBlock, assistantMsg 
 
 	toolDef := e.toolDefinitions.FindByName(block.Name)
 	if toolDef == nil {
-		// Tool not found â€?complete immediately with error
+		// Tool not found --complete immediately with error
 		e.tools = append(e.tools, TrackedTool{
 			ID:                block.ID,
 			Block:             block,

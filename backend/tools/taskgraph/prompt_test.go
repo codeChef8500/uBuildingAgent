@@ -64,7 +64,7 @@ func TestTaskUpdate_PromptKeywords(t *testing.T) {
 		"## Fields You Can Update",
 		"**activeForm**",
 		"## Status Workflow",
-		"`pending` â†?`in_progress` â†?`completed`",
+		"`pending` --`in_progress` --`completed`",
 		"`cancelled`",
 		"`failed`",
 		"## Examples",

@@ -65,7 +65,7 @@ func (t *Tool) Description(input json.RawMessage) string {
 		return "Ask the user"
 	}
 	if len(q) > 80 {
-		q = q[:80] + "â€?
+		q = q[:80] + "--"
 	}
 	return "Ask: " + q
 }
@@ -116,7 +116,7 @@ Use the optional ` + "`preview`" + ` field on options when presenting concrete a
 - Formatted code snippets showing different implementations
 - Visual comparisons or diagrams
 
-Preview content must be a self-contained HTML fragment (no <html>/<body> wrapper, no <script> or <style> tags â€?use inline style attributes instead). Do not use previews for simple preference questions where labels and descriptions suffice. Note: previews are only supported for single-select questions (not multiSelect).
+Preview content must be a self-contained HTML fragment (no <html>/<body> wrapper, no <script> or <style> tags --use inline style attributes instead). Do not use previews for simple preference questions where labels and descriptions suffice. Note: previews are only supported for single-select questions (not multiSelect).
 `
 
 func (t *Tool) ValidateInput(input json.RawMessage, _ *agents.ToolUseContext) *tool.ValidationResult {

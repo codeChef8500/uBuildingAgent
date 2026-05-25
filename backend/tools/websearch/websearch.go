@@ -18,7 +18,7 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// WebSearchTool â€?provider-agnostic web search. Maps to claude-code-main's
+// WebSearchTool --provider-agnostic web search. Maps to claude-code-main's
 // tools/WebSearchTool (name, prompt, Sources-section requirement, current-
 // month injection). The actual search is delegated to a pluggable
 // SearchProvider; the Anthropic server-tool path (web_search_20250305) is not

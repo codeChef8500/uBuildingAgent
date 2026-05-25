@@ -8,7 +8,7 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// Tool â†?API Schema conversion
+// Tool --API Schema conversion
 // Maps to TypeScript toolToAPISchema() in utils/api.ts
 // ---------------------------------------------------------------------------
 
@@ -67,7 +67,7 @@ func (s *APIToolSchema) ToToolDefinition() agents.ToolDefinition {
 }
 
 // ---------------------------------------------------------------------------
-// Schema cache â€?session-stable base schemas (replaces TS WeakMap)
+// Schema cache --session-stable base schemas (replaces TS WeakMap)
 // ---------------------------------------------------------------------------
 
 var schemaCache sync.Map // map[string]*cachedBase
@@ -89,7 +89,7 @@ func ClearSchemaCache() {
 }
 
 // ---------------------------------------------------------------------------
-// ToolToAPISchema â€?main conversion function
+// ToolToAPISchema --main conversion function
 // ---------------------------------------------------------------------------
 
 // ToolToAPISchema converts a Tool to an API-ready schema.
@@ -167,7 +167,7 @@ func applyOverlays(base *cachedBase, opts SchemaOpts) APIToolSchema {
 }
 
 // ---------------------------------------------------------------------------
-// ToolsToAPISchemas â€?batch conversion
+// ToolsToAPISchemas --batch conversion
 // ---------------------------------------------------------------------------
 
 // ToolsToAPISchemas converts a set of tools to API schemas and returns
