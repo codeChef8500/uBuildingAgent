@@ -14,14 +14,16 @@ import (
 // AgentMessage is a single message in the agent's conversation history.
 // It is richer than llmprovider.Message: it carries metadata used by the loop.
 type AgentMessage struct {
-	ID        string                    `json:"id"`
-	Role      llmprovider.Role          `json:"role"`
-	Content   []llmprovider.ContentPart `json:"content,omitempty"`
-	ToolCalls []llmprovider.ToolCall    `json:"tool_calls,omitempty"`
-	Thinking  string                    `json:"thinking,omitempty"`
-	Hidden    bool                      `json:"hidden,omitempty"` // excluded from LLM context when true
-	Source    string                    `json:"source,omitempty"` // "user"|"assistant"|"system"|"tool"
-	Timestamp time.Time                 `json:"timestamp"`
+	ID           string                    `json:"id"`
+	Role         llmprovider.Role          `json:"role"`
+	Content      []llmprovider.ContentPart `json:"content,omitempty"`
+	ToolCalls    []llmprovider.ToolCall    `json:"tool_calls,omitempty"`
+	Thinking     string                    `json:"thinking,omitempty"`
+	Hidden       bool                      `json:"hidden,omitempty"`        // excluded from LLM context when true
+	Source       string                    `json:"source,omitempty"`        // "user"|"assistant"|"system"|"tool"
+	IsError      bool                      `json:"is_error,omitempty"`      // true for synthetic error messages
+	ErrorMessage string                    `json:"error_message,omitempty"` // error detail when IsError is true
+	Timestamp    time.Time                 `json:"timestamp"`
 }
 
 // ── Agent Event ───────────────────────────────────────────────────────────
@@ -41,6 +43,11 @@ const (
 	AgentEventContextPatch  AgentEventType = "context_patch"
 	AgentEventEnd           AgentEventType = "agent_end"
 	AgentEventError         AgentEventType = "error"
+
+	// Message lifecycle events (P1-4): emitted during streaming for live partial updates.
+	AgentEventMessageStart  AgentEventType = "message_start"  // first content arrived; Message is partial
+	AgentEventMessageUpdate AgentEventType = "message_update" // delta applied; Message is updated partial
+	AgentEventMessageEnd    AgentEventType = "message_end"    // streaming complete; Message is final
 )
 
 // AgentEvent is emitted on the channel returned by RunAgentLoop / Agent.Prompt.
@@ -101,6 +108,12 @@ type AgentTool struct {
 	// Returns AgentToolResult; if Terminate is true the loop exits after this turn.
 	Execute func(ctx *ToolExecContext) AgentToolResult `json:"-"`
 
+	// PrepareArguments is an optional hook called before ValidateInput.
+	// Use it to normalise raw LLM args (e.g. fix field-name differences, add defaults).
+	// Return nil to keep the original args unchanged.
+	// nil = skip pre-processing.
+	PrepareArguments func(args json.RawMessage) json.RawMessage `json:"-"`
+
 	// ValidateInput is an optional hook called before Execute.
 	// Return Valid=false to abort execution and surface Message as the tool result.
 	// nil = skip validation.
@@ -137,6 +150,11 @@ type AgentToolResult struct {
 	Details   string `json:"details,omitempty"`
 	IsError   bool   `json:"is_error,omitempty"`
 	Terminate bool   `json:"terminate,omitempty"` // true = stop the loop after this turn
+
+	// ContentParts, when non-nil, replaces the plain Content string as the tool-result
+	// payload sent to the LLM.  Supports rich multi-modal content (text + images).
+	// nil = fall back to Content string.
+	ContentParts []llmprovider.ContentPart `json:"content_parts,omitempty"`
 
 	// ContextModifier is an optional function that mutates the AgentContext
 	// after the tool result is appended.  Use it to inject new messages or
@@ -312,6 +330,61 @@ type SkillMeta struct {
 	Description string   `json:"description,omitempty"`
 	Tags        []string `json:"tags,omitempty"`
 }
+
+// ── Queue (P2-8) ─────────────────────────────────────────────────────────
+
+// QueueMode controls how many messages are drained from a MessageQueue at once.
+//
+//   - QueueModeAll: drain all queued messages in one call.
+//   - QueueModeOneAtATime: drain only the oldest message, leaving the rest for later.
+type QueueMode string
+
+const (
+	QueueModeAll        QueueMode = "all"
+	QueueModeOneAtATime QueueMode = "one-at-a-time"
+)
+
+// MessageQueue is a simple FIFO queue of AgentMessages with configurable drain semantics.
+type MessageQueue struct {
+	Mode     QueueMode
+	messages []AgentMessage
+}
+
+// NewMessageQueue creates an empty queue with the given drain mode.
+func NewMessageQueue(mode QueueMode) *MessageQueue {
+	if mode == "" {
+		mode = QueueModeOneAtATime
+	}
+	return &MessageQueue{Mode: mode}
+}
+
+// Enqueue appends a message to the queue.
+func (q *MessageQueue) Enqueue(msg AgentMessage) {
+	q.messages = append(q.messages, msg)
+}
+
+// Drain returns messages according to the queue mode and removes them.
+func (q *MessageQueue) Drain() []AgentMessage {
+	if len(q.messages) == 0 {
+		return nil
+	}
+	if q.Mode == QueueModeAll {
+		out := q.messages
+		q.messages = nil
+		return out
+	}
+	out := []AgentMessage{q.messages[0]}
+	q.messages = q.messages[1:]
+	return out
+}
+
+// Clear removes all queued messages.
+func (q *MessageQueue) Clear() {
+	q.messages = nil
+}
+
+// Len returns the number of queued messages.
+func (q *MessageQueue) Len() int { return len(q.messages) }
 
 // ContextEngineIface is the subset of contextmgr.ContextEngine needed by the loop.
 type ContextEngineIface interface {

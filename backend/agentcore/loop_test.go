@@ -209,6 +209,11 @@ func TestLoop_BudgetExceeded(t *testing.T) {
 		if ev.Type == AgentEventError {
 			gotError = true
 		}
+		// P0-1: non-context-cancel fatal errors now emit a synthetic TurnEnd
+		// with IsError=true followed by AgentEnd, rather than AgentEventError.
+		if ev.Type == AgentEventTurnEnd && ev.Message != nil && ev.Message.IsError {
+			gotError = true
+		}
 	}
 	if !gotError {
 		t.Error("expected budget exceeded error")

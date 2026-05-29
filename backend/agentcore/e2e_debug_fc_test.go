@@ -411,7 +411,7 @@ func TestDebugFunctionCalling(t *testing.T) {
 			}
 
 			// Print a separator
-			t.Logf(strings.Repeat("-", 60))
+			t.Logf("%s", strings.Repeat("-", 60))
 
 			// Extract error message for 4xx
 			if code >= 400 {

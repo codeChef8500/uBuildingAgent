@@ -56,8 +56,24 @@ func runLoop(
 		// Inner loop: LLM ↔ Tools
 		stop, err := runInnerLoop(ctx, cfg, conv, ch)
 		if err != nil {
-			emit(ch, AgentEvent{Type: AgentEventError, Err: err})
-			return
+			if ctx.Err() != nil {
+				// Context cancelled: keep original error event for abort scenarios.
+				emit(ch, AgentEvent{Type: AgentEventError, Err: ctx.Err()})
+				return
+			}
+			// Non-cancellation fatal error: synthesise an error assistant message
+			// so consumers receive a well-formed TurnEnd+AgentEnd event sequence.
+			errMsg := AgentMessage{
+				ID:           newID(),
+				Role:         llmprovider.RoleAssistant,
+				IsError:      true,
+				ErrorMessage: err.Error(),
+				Source:       "assistant",
+				Timestamp:    time.Now(),
+			}
+			conv.Messages = append(conv.Messages, errMsg)
+			emit(ch, AgentEvent{Type: AgentEventTurnEnd, Message: &errMsg})
+			break
 		}
 		if stop {
 			break
@@ -284,6 +300,10 @@ func runInnerLoop(
 
 // collectLLMTurn streams a single LLM call, emitting AgentEvents, and returns
 // the assembled assistant message plus final usage.
+//
+// P1-4: in addition to the legacy text/thinking delta events, this function now
+// emits message_start (on first content), message_update (on every delta), and
+// message_end (after final assembly), each carrying the current partial message.
 func collectLLMTurn(
 	ctx context.Context,
 	model llmprovider.Model,
@@ -298,6 +318,41 @@ func collectLLMTurn(
 	var toolCallsInProgress = map[int]*toolCallAccumulator{}
 	var finalUsage *llmprovider.Usage
 
+	// P1-4: partial message lifecycle tracking
+	partialStarted := false
+
+	// buildPartialTCs assembles in-progress tool calls for a partial snapshot.
+	buildPartialTCs := func() []llmprovider.ToolCall {
+		tcs := make([]llmprovider.ToolCall, 0, len(toolCallsInProgress))
+		for i := 0; i < len(toolCallsInProgress)+10; i++ {
+			acc, ok := toolCallsInProgress[i]
+			if !ok {
+				continue
+			}
+			argsStr := acc.argsBuilder.String()
+			if argsStr == "" {
+				argsStr = "{}"
+			}
+			tcs = append(tcs, llmprovider.ToolCall{
+				ID: acc.id, Name: acc.name,
+				Arguments: json.RawMessage(argsStr),
+			})
+		}
+		return tcs
+	}
+
+	// emitPartialUpdate emits message_start on the first call, message_update
+	// on subsequent calls — both carrying the current partial assembled message.
+	emitPartialUpdate := func() {
+		partial := AgentMessageFromLLMEvent(textBuilder.String(), thinkingBuilder.String(), buildPartialTCs())
+		evType := AgentEventMessageUpdate
+		if !partialStarted {
+			partialStarted = true
+			evType = AgentEventMessageStart
+		}
+		emit(ch, AgentEvent{Type: evType, Message: &partial})
+	}
+
 	for ev := range streamCh {
 		switch ev.Type {
 		case llmprovider.StreamEventError:
@@ -306,10 +361,12 @@ func collectLLMTurn(
 		case llmprovider.StreamEventTextDelta:
 			textBuilder.WriteString(ev.Delta)
 			emit(ch, AgentEvent{Type: AgentEventTextDelta, Delta: ev.Delta})
+			emitPartialUpdate()
 
 		case llmprovider.StreamEventThinkingDelta:
 			thinkingBuilder.WriteString(ev.Delta)
 			emit(ch, AgentEvent{Type: AgentEventThinkingDelta, Delta: ev.Delta})
+			emitPartialUpdate()
 
 		case llmprovider.StreamEventToolCallStart:
 			if ev.ToolCall != nil {
@@ -317,12 +374,14 @@ func collectLLMTurn(
 					id:   ev.ToolCall.ID,
 					name: ev.ToolCall.Name,
 				}
+				emitPartialUpdate()
 			}
 
 		case llmprovider.StreamEventToolCallDelta:
 			if ev.ToolCall != nil {
 				if acc, ok := toolCallsInProgress[ev.ToolCall.Index]; ok {
 					acc.argsBuilder.WriteString(ev.ToolCall.ArgsDelta)
+					emitPartialUpdate()
 				}
 			}
 
@@ -336,6 +395,7 @@ func collectLLMTurn(
 						acc.argsBuilder.Reset()
 						acc.argsBuilder.WriteString(ev.ToolCall.ArgsDelta)
 					}
+					emitPartialUpdate()
 				}
 			}
 
@@ -344,9 +404,8 @@ func collectLLMTurn(
 		}
 	}
 
-	// Assemble tool calls
+	// Assemble final tool calls (deterministic index order)
 	toolCalls := make([]llmprovider.ToolCall, 0, len(toolCallsInProgress))
-	// sort by index for deterministic order
 	for i := 0; i < len(toolCallsInProgress)+10; i++ {
 		acc, ok := toolCallsInProgress[i]
 		if !ok {
@@ -364,6 +423,13 @@ func collectLLMTurn(
 	}
 
 	msg := AgentMessageFromLLMEvent(textBuilder.String(), thinkingBuilder.String(), toolCalls)
+
+	// P1-4: emit message_end with the final assembled message
+	if partialStarted {
+		msgCopy := msg
+		emit(ch, AgentEvent{Type: AgentEventMessageEnd, Message: &msgCopy})
+	}
+
 	return msg, finalUsage, nil
 }
 
@@ -569,6 +635,13 @@ func executeSingleTool(
 		}
 		isError = true
 	} else {
+		// PrepareArguments hook — normalise raw LLM args before validation (P0-3)
+		if found.PrepareArguments != nil {
+			if normalized := found.PrepareArguments(tc.Arguments); normalized != nil {
+				tc.Arguments = normalized
+			}
+		}
+
 		// ValidateInput hook — abort early on invalid args
 		if found.ValidateInput != nil {
 			if v := found.ValidateInput(tc.Arguments); v != nil && !v.Valid {

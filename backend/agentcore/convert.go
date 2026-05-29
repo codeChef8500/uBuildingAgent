@@ -69,16 +69,25 @@ func AgentMessageFromLLMEvent(
 }
 
 // ToolResultMessage builds a tool-result AgentMessage from an AgentToolResult.
+//
+// P1-5: when result.ContentParts is non-nil it is used as-is, allowing rich
+// multi-modal content (e.g. images).  Falls back to the plain Content string.
 func ToolResultMessage(toolCallID string, result AgentToolResult) AgentMessage {
-	return AgentMessage{
-		Role: llmprovider.RoleTool,
-		Content: []llmprovider.ContentPart{
+	var parts []llmprovider.ContentPart
+	if len(result.ContentParts) > 0 {
+		parts = result.ContentParts
+	} else {
+		parts = []llmprovider.ContentPart{
 			{
 				Type:       llmprovider.ContentTypeToolResult,
 				ToolCallID: toolCallID,
 				ToolResult: result.Content,
 			},
-		},
-		Source: "tool",
+		}
+	}
+	return AgentMessage{
+		Role:    llmprovider.RoleTool,
+		Content: parts,
+		Source:  "tool",
 	}
 }
