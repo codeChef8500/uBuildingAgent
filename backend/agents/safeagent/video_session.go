@@ -28,8 +28,8 @@ const (
 // VideoEvent is a single event pushed to the frontend over SSE.
 type VideoEvent struct {
 	Type       VideoEventType  `json:"type"`
-	FrameIdx   int             `json:"frame_idx,omitempty"`
-	Timestamp  float64         `json:"timestamp,omitempty"` // seconds into the video
+	FrameIdx   int             `json:"frame_idx"`
+	Timestamp  float64         `json:"timestamp"` // seconds into the video
 	Delta      string          `json:"delta,omitempty"`
 	ToolName   string          `json:"tool_name,omitempty"`
 	ToolArgs   json.RawMessage `json:"tool_args,omitempty"`
@@ -64,6 +64,7 @@ type VideoSession struct {
 	closeCh   chan struct{}
 	closeOnce sync.Once
 	wg        sync.WaitGroup // counts active runFrame goroutines
+	history   []FrameJob     // history of submitted frames
 }
 
 // NewVideoSession creates an idle VideoSession.
@@ -88,6 +89,12 @@ func (s *VideoSession) Submit(job FrameJob) {
 
 	if s.isClosed() {
 		return
+	}
+
+	// Keep history of submitted frames for sliding-window multi-image context
+	s.history = append(s.history, job)
+	if len(s.history) > 100 {
+		s.history = s.history[len(s.history)-100:]
 	}
 
 	if s.running == nil {
@@ -163,11 +170,39 @@ func (s *VideoSession) startLocked(job FrameJob) {
 	}()
 }
 
-// runFrame executes the full 5-agent pipeline and forwards events.
+// getFrameWindow returns the URLs of the current and up to windowSize previous frames.
+func (s *VideoSession) getFrameWindow(currentIdx int, windowSize int) []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	var matches []FrameJob
+	for _, f := range s.history {
+		if f.Idx <= currentIdx {
+			matches = append(matches, f)
+		}
+	}
+
+	if len(matches) > windowSize {
+		matches = matches[len(matches)-windowSize:]
+	}
+
+	urls := make([]string, len(matches))
+	for i, f := range matches {
+		urls[i] = f.ImageURL
+	}
+	return urls
+}
+
+// runFrame executes the full 3-agent pipeline and forwards events.
 func (s *VideoSession) runFrame(ctx context.Context, job FrameJob) {
+	// Retrieve a sliding window of the last 3 frames (current + 2 previous).
+	// With 2s frame interval, this spans ~6s of video time.
+	imageURLs := s.getFrameWindow(job.Idx, 3)
+
 	input := SceneInput{
 		Description: job.Desc,
-		ImageURL:    job.ImageURL,
+		ImageURL:    job.ImageURL, // Keep for backward-compatibility
+		ImageURLs:   imageURLs,
 	}
 	prompt, _ := json.Marshal(input)
 
@@ -182,7 +217,8 @@ func (s *VideoSession) runFrame(ctx context.Context, job FrameJob) {
 		select {
 		case <-s.closeCh:
 			cancelled = true
-			for range ch {} // drain to unblock the agent goroutine
+			for range ch {
+			} // drain to unblock the agent goroutine
 			goto done
 		default:
 		}

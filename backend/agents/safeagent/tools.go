@@ -1,6 +1,7 @@
 package safeagent
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
@@ -10,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/ubuildingagent/backend/agentcore"
@@ -17,9 +19,9 @@ import (
 )
 
 // vlmDetectionPrompt is sent to the VLM alongside the image for object detection.
-const vlmDetectionPrompt = `你是施工现场安全检测助手。请仔细分析这张施工现场图片，完成以下任务：
+const vlmDetectionPrompt = `你是施工现场安全检测助手。你可能会接收到单张图片，或者是按时间先后顺序排列的多张连续视频帧（多图时序输入）。请仔细分析输入的图片，完成以下任务：
 1. 识别图中所有人员、设备、工具和构筑物
-2. 找出所有安全违规行为（如：未戴安全帽、未系安全绳、违规操作、危险行为等）
+2. 找出所有安全违规行为（如：未戴安全帽、未系安全绳、违规操作、危险行为等）。如果是多张连续帧，请着重对比图片间的运动状态、状态变化或位置移动（例如：人员在翻越、正在跌落、防护网状态突变等动态危险行为），进行综合研判
 3. 如果没有图片或图片无法识别，根据场景描述进行分析
 
 请严格按照以下 JSON 格式输出（不要包含任何其他文字）：
@@ -57,17 +59,24 @@ func fetchImageAsDataURL(imageURL string) (string, error) {
 	return "data:image/jpeg;base64," + base64.StdEncoding.EncodeToString(raw), nil
 }
 
-// callVLM sends an image + text prompt to the vision model and returns the full text response.
-func callVLM(ctx context.Context, vlmModel llmprovider.Model, apiKey, imageDataURL, textPrompt string) (string, error) {
-	contentParts := []llmprovider.ContentPart{
-		{Type: llmprovider.ContentTypeText, Text: textPrompt},
+// callVLMMulti sends multiple images + text prompt to the vision model and returns the full text response.
+func callVLMMulti(ctx context.Context, vlmModel llmprovider.Model, apiKey string, imageDataURLs []string, textPrompt string) (string, error) {
+	contentParts := []llmprovider.ContentPart{}
+
+	// Prepend all images so the VLM sees them before the text.
+	for _, imgData := range imageDataURLs {
+		if imgData != "" {
+			contentParts = append(contentParts, llmprovider.ContentPart{
+				Type:     llmprovider.ContentTypeImageURL,
+				ImageURL: imgData,
+			})
+		}
 	}
-	if imageDataURL != "" {
-		// Prepend the image so the VLM sees it before the text.
-		contentParts = append([]llmprovider.ContentPart{
-			{Type: llmprovider.ContentTypeImageURL, ImageURL: imageDataURL},
-		}, contentParts...)
-	}
+
+	contentParts = append(contentParts, llmprovider.ContentPart{
+		Type: llmprovider.ContentTypeText,
+		Text: textPrompt,
+	})
 
 	conv := llmprovider.Context{
 		Messages: []llmprovider.Message{
@@ -97,23 +106,71 @@ func callVLM(ctx context.Context, vlmModel llmprovider.Model, apiKey, imageDataU
 	return sb.String(), nil
 }
 
-// buildVisionTools returns VisionAgent tools. detect_objects makes a real VLM call.
-func buildVisionTools(vlmModel llmprovider.Model, vlmAPIKey string) []agentcore.AgentTool {
+// callVLM sends an image + text prompt to the vision model and returns the full text response.
+func callVLM(ctx context.Context, vlmModel llmprovider.Model, apiKey, imageDataURL, textPrompt string) (string, error) {
+	var images []string
+	if imageDataURL != "" {
+		images = []string{imageDataURL}
+	}
+	return callVLMMulti(ctx, vlmModel, apiKey, images, textPrompt)
+}
+
+// callDetector sends image bytes to the Python Detector Sidecar and returns
+// the structured DetectorResult. Returns nil, nil if endpoint is empty.
+func callDetector(ctx context.Context, endpoint string, imageBytes []byte, prevImageBytes []byte) (*DetectorResult, error) {
+	if endpoint == "" {
+		return nil, nil
+	}
+
+	reqBody := map[string]interface{}{
+		"image":     base64.StdEncoding.EncodeToString(imageBytes),
+		"mime_type": "image/jpeg",
+	}
+	if len(prevImageBytes) > 0 {
+		reqBody["prev_image"] = base64.StdEncoding.EncodeToString(prevImageBytes)
+	}
+
+	body, _ := json.Marshal(reqBody)
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint+"/detect", bytes.NewReader(body))
+	if err != nil {
+		return nil, fmt.Errorf("callDetector: build request: %w", err)
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("callDetector: %w", err)
+	}
+	defer resp.Body.Close()
+
+	raw, _ := io.ReadAll(resp.Body)
+	var result DetectorResult
+	if err := json.Unmarshal(raw, &result); err != nil {
+		return nil, fmt.Errorf("callDetector: parse response: %w", err)
+	}
+	return &result, nil
+}
+
+// buildVisionTools returns VisionAgent tools. detect_objects calls Detector
+// Sidecar first (YOLO+CV), then falls back to VLM only when needed.
+func buildVisionTools(vlmModel llmprovider.Model, vlmAPIKey, detectorEndpoint string) []agentcore.AgentTool {
 	return []agentcore.AgentTool{
 		{
 			Name:        "detect_objects",
-			Description: "检测场景中的人员、设备、安全装备和危险行为，通过视觉模型分析图像",
+			Description: "检测场景中的人员、设备、安全装备和危险行为，通过视觉模型分析图像（支持多图时序输入）",
 			Parameters: json.RawMessage(`{
 				"type": "object",
 				"properties": {
-					"image_url":   {"type": "string", "description": "图像 URL"},
+					"image_url":   {"type": "string", "description": "主图像 URL"},
+					"image_urls":  {"type": "array", "items": {"type": "string"}, "description": "时序多帧图像 URLs 列表（可选）"},
 					"description": {"type": "string", "description": "场景文字描述"}
 				}
 			}`),
 			Execute: func(texCtx *agentcore.ToolExecContext) agentcore.AgentToolResult {
 				var args struct {
-					ImageURL    string `json:"image_url"`
-					Description string `json:"description"`
+					ImageURL    string   `json:"image_url"`
+					ImageURLs   []string `json:"image_urls"`
+					Description string   `json:"description"`
 				}
 				if err := json.Unmarshal(texCtx.Args, &args); err != nil {
 					return agentcore.AgentToolResult{
@@ -122,25 +179,84 @@ func buildVisionTools(vlmModel llmprovider.Model, vlmAPIKey string) []agentcore.
 					}
 				}
 
-				// Build the text prompt, include scene description as context.
+				// Collect all target image URLs
+				var urls []string
+				if len(args.ImageURLs) > 0 {
+					urls = args.ImageURLs
+				} else if args.ImageURL != "" {
+					urls = []string{args.ImageURL}
+				}
+
+				// Fetch and encode all images concurrently
+				var imageDataURLs []string
+				var rawBytes []byte
+				if len(urls) > 0 {
+					imageDataURLs = make([]string, len(urls))
+					var wg sync.WaitGroup
+					for i, url := range urls {
+						if url == "" {
+							continue
+						}
+						wg.Add(1)
+						go func(idx int, targetURL string) {
+							defer wg.Done()
+							data, ferr := fetchImageAsDataURL(targetURL)
+							if ferr != nil {
+								fmt.Printf("[detect_objects] image fetch warning for %q: %v\n", targetURL, ferr)
+								return
+							}
+							imageDataURLs[idx] = data
+						}(i, url)
+					}
+					wg.Wait()
+					// Decode the first image for the detector
+					if imageDataURLs[0] != "" {
+						parts := strings.SplitN(imageDataURLs[0], ",", 2)
+						if len(parts) == 2 {
+							rawBytes, _ = base64.StdEncoding.DecodeString(parts[1])
+						}
+					}
+				}
+
+				// Stage 1: Try Detector Sidecar (YOLO + CV + rules) first.
+				if len(rawBytes) > 0 {
+					detResult, detErr := callDetector(texCtx.Ctx, detectorEndpoint, rawBytes, nil)
+					if detErr == nil && detResult != nil {
+						switch detResult.Status {
+						case "safe":
+							// No violations — return detector result directly, skip VLM.
+							safeJSON, _ := json.Marshal(DetectionResult{
+								Objects:    detResult.Objects,
+								Violations: []string{},
+								Confidence: 0.95,
+								Summary:    detResult.Summary,
+							})
+							return agentcore.AgentToolResult{Content: string(safeJSON)}
+						case "violation":
+							// Clear violation — return detector result, skip VLM.
+							violations := make([]string, len(detResult.Violations))
+							for i, v := range detResult.Violations {
+								violations[i] = v.Type + ": " + v.Reason
+							}
+							violJSON, _ := json.Marshal(DetectionResult{
+								Objects:    detResult.Objects,
+								Violations: violations,
+								Confidence: 0.90,
+								Summary:    detResult.Summary,
+							})
+							return agentcore.AgentToolResult{Content: string(violJSON)}
+						}
+						// "suspicious" → fall through to VLM.
+					}
+				}
+
+				// Stage 2: VLM deep analysis (for suspicious or detector-unavailable cases).
 				prompt := vlmDetectionPrompt
 				if args.Description != "" {
 					prompt = "场景描述：" + args.Description + "\n\n" + vlmDetectionPrompt
 				}
 
-				// Fetch and encode the image if a URL was provided.
-				imageDataURL := ""
-				if args.ImageURL != "" {
-					var ferr error
-					imageDataURL, ferr = fetchImageAsDataURL(args.ImageURL)
-					if ferr != nil {
-						// Log but continue — VLM can still analyse based on description.
-						fmt.Printf("[detect_objects] image fetch warning: %v\n", ferr)
-					}
-				}
-
-				// Call VLM.
-				rawText, err := callVLM(texCtx.Ctx, vlmModel, vlmAPIKey, imageDataURL, prompt)
+				rawText, err := callVLMMulti(texCtx.Ctx, vlmModel, vlmAPIKey, imageDataURLs, prompt)
 				if err != nil {
 					return agentcore.AgentToolResult{
 						Content: fmt.Sprintf(`{"error":"VLM call failed: %v","summary":"视觉检测失败"}`, err),
@@ -149,7 +265,6 @@ func buildVisionTools(vlmModel llmprovider.Model, vlmAPIKey string) []agentcore.
 				}
 
 				// Try to parse VLM output as DetectionResult JSON.
-				// If the model wrapped it in markdown fences, strip them first.
 				clean := strings.TrimSpace(rawText)
 				if i := strings.Index(clean, "```json"); i >= 0 {
 					clean = clean[i+7:]
@@ -167,11 +282,9 @@ func buildVisionTools(vlmModel llmprovider.Model, vlmAPIKey string) []agentcore.
 
 				var result DetectionResult
 				if err := json.Unmarshal([]byte(clean), &result); err == nil {
-					// Valid JSON — return it directly.
 					return agentcore.AgentToolResult{Content: clean}
 				}
 
-				// VLM returned free text — wrap it in a DetectionResult summary.
 				wrapped, _ := json.Marshal(DetectionResult{
 					Objects:    []DetectedObject{},
 					Violations: []string{},
@@ -413,6 +526,20 @@ func buildNotifyTools() []agentcore.AgentTool {
 			},
 		},
 	}
+}
+
+// buildAnalysisTools returns merged Risk+Decision tools for AnalysisAgent.
+func buildAnalysisTools() []agentcore.AgentTool {
+	tools := buildRiskTools()
+	tools = append(tools, buildDecisionTools()...)
+	return tools
+}
+
+// buildClosureTools returns merged Workflow+Notify tools for ClosureAgent.
+func buildClosureTools() []agentcore.AgentTool {
+	tools := buildWorkflowTools()
+	tools = append(tools, buildNotifyTools()...)
+	return tools
 }
 
 // jsonOrString returns s as a raw JSON value if it is valid JSON, otherwise as a JSON string.

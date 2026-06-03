@@ -12,6 +12,7 @@ import (
 
 	"github.com/ubuildingagent/backend/agentcore"
 	"github.com/ubuildingagent/backend/internal/envconfig"
+	"github.com/ubuildingagent/backend/llmprovider"
 	_ "github.com/ubuildingagent/backend/llmprovider/providers" // register builtins
 )
 
@@ -33,9 +34,27 @@ func loadSafeAgentCfg(t *testing.T) Config {
 		t.Skipf("skipping integration test: incomplete .env (%v)", err)
 	}
 	t.Logf("LLM_TYPE=%s  MODEL=%s  BASE_URL=%s", cfg.Type, cfg.Model, cfg.BaseURL)
+
+	vlmCfg, err := envconfig.LoadVLMFromFile(envFile())
+	if err != nil {
+		t.Skipf("skipping integration test: VLM config err (%v)", err)
+	}
+
+	var vlmModel llmprovider.Model
+	var vlmAPIKey string
+	if vlmCfg.IsConfigured() {
+		vlmModel = vlmCfg.ToModel()
+		vlmAPIKey = vlmCfg.APIKey
+		t.Logf("VLM_TYPE=%s  MODEL=%s  BASE_URL=%s", vlmCfg.Type, vlmCfg.Model, vlmCfg.BaseURL)
+	} else {
+		t.Log("VLM is not configured")
+	}
+
 	return Config{
 		APIKey:              cfg.APIKey,
 		Model:               cfg.ToModel(),
+		VLMModel:            vlmModel,
+		VLMAPIKey:           vlmAPIKey,
 		OrchestratorMaxIter: 20,
 		SubAgentMaxIter:     10,
 	}
@@ -143,7 +162,13 @@ func TestSafeAgentE2E_FullPipeline(t *testing.T) {
 
 func TestSafeAgentE2E_VisionAgent(t *testing.T) {
 	cfg := loadSafeAgentCfg(t)
-	subCfg := SubAgentConfig{Model: cfg.Model, APIKey: cfg.APIKey, MaxIter: cfg.SubAgentMaxIter}
+	subCfg := SubAgentConfig{
+		Model:     cfg.Model,
+		APIKey:    cfg.APIKey,
+		MaxIter:   cfg.SubAgentMaxIter,
+		VLMModel:  cfg.VLMModel,
+		VLMAPIKey: cfg.VLMAPIKey,
+	}
 	agent := NewVisionAgent(subCfg)
 
 	prompt := `场景描述：施工现场高处作业，脚手架上2名工人未佩戴安全帽，未系安全绳。

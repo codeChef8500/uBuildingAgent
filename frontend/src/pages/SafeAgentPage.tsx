@@ -70,7 +70,9 @@ export function SafeAgentPage() {
   const { state, start, reset } = useInspect()
   const [mediaUrl, setMediaUrl] = useState('')
   const [mediaType, setMediaType] = useState<'image' | 'video' | 'camera' | 'none'>('none')
+  const [mediaName, setMediaName] = useState('')
   const [submitted, setSubmitted] = useState<{ description: string; location: string } | null>(null)
+  const [videoSeekTrigger, setVideoSeekTrigger] = useState<{ time: number; triggerId: number } | null>(null)
   const chatBottomRef = useRef<HTMLDivElement>(null)
 
   const running = state.status === 'running'
@@ -80,9 +82,11 @@ export function SafeAgentPage() {
     chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [state.streamingText, state.report])
 
-  function handleMediaChange(url: string, type: 'image' | 'video' | 'camera' | 'none') {
+  function handleMediaChange(url: string, type: 'image' | 'video' | 'camera' | 'none', name?: string) {
     setMediaUrl(url)
     setMediaType(type)
+    setMediaName(name || '')
+    setVideoSeekTrigger(null)
   }
 
   function handleStart(description: string, url: string, location: string) {
@@ -97,7 +101,21 @@ export function SafeAgentPage() {
 
   // ── Video frame inspection ─────────────────────────────────────
   const { state: videoState, start: videoStart, stop: videoStop } = useVideoInspect()
-  const [videoDesc, setVideoDesc] = useState('')
+
+  // ── Auto-trigger video inspection ────────────────────────────────
+  const lastTriggeredUrlRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (mediaType === 'video' && mediaUrl) {
+      if (lastTriggeredUrlRef.current !== mediaUrl) {
+        lastTriggeredUrlRef.current = mediaUrl
+        const desc = mediaName ? `视频安全巡检: ${mediaName}` : '视频自动安全巡检'
+        videoStart(mediaUrl, desc)
+      }
+    } else {
+      lastTriggeredUrlRef.current = null
+    }
+  }, [mediaUrl, mediaType, mediaName, videoStart])
 
   const isVideoMode = mediaType === 'video'
 
@@ -106,7 +124,11 @@ export function SafeAgentPage() {
     <div className="flex h-screen overflow-hidden">
       {/* ===== LEFT: full-screen media player ===== */}
       <div className="w-3/5 shrink-0 relative">
-        <MediaPanel onMediaChange={handleMediaChange} />
+        <MediaPanel
+          onMediaChange={handleMediaChange}
+          frames={isVideoMode ? videoState.frames : undefined}
+          videoSeekTrigger={videoSeekTrigger}
+        />
       </div>
 
       {/* ===== RIGHT: context-aware panel ===== */}
@@ -116,61 +138,42 @@ export function SafeAgentPage() {
         {isVideoMode ? (
           <>
             {/* Video header */}
-            <div className="px-5 py-2.5 bg-white border-b border-gray-100 shrink-0 flex items-center gap-2">
-              <span className="text-xs font-medium text-indigo-700">🎬 视频逐帧巡检</span>
-              <span className="text-gray-300">·</span>
-              <span className="text-xs text-gray-400">每 5 秒提取一帧，滑动窗口调度</span>
+            <div className="px-5 py-2.5 bg-white border-b border-gray-100 shrink-0 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium text-indigo-700">🎬 视频逐帧巡检</span>
+                <span className="text-gray-300">·</span>
+                <span className="text-xs text-gray-400">每 5 秒提取一帧，滑动窗口调度</span>
+              </div>
+              {videoState.isRunning && (
+                <button
+                  onClick={videoStop}
+                  className="px-3 py-1 bg-red-100 hover:bg-red-200 text-red-600 text-xs font-medium rounded-lg transition-colors flex items-center gap-1 shadow-sm"
+                >
+                  🛑 停止巡检
+                </button>
+              )}
             </div>
 
             {/* Frame inspection panel (scrollable) */}
             {videoState.frames.length > 0 || videoState.isRunning ? (
-              <FrameInspectPanel videoState={videoState} onStop={videoStop} />
+              <FrameInspectPanel
+                videoState={videoState}
+                onStop={videoStop}
+                onSeekTo={(time) => {
+                  console.log("SafeAgentPage onSeekTo clicked for time:", time);
+                  setVideoSeekTrigger({ time, triggerId: Date.now() });
+                }}
+              />
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center px-8 text-center gap-3">
-                <div className="text-5xl">🎬</div>
-                <p className="text-sm font-medium text-gray-700">视频已就绪</p>
+                <div className="text-5xl animate-bounce">🤖</div>
+                <p className="text-sm font-medium text-gray-700">等待上传视频</p>
                 <p className="text-xs text-gray-400 leading-relaxed">
-                  填写场景描述后点击「开始视频巡检」<br />
-                  系统将每 5 秒提取一帧送入 AI 分析
+                  请在左侧上传施工现场视频或输入视频 URL<br />
+                  上传后系统将自动启动 AI 逐帧巡检
                 </p>
               </div>
             )}
-
-            {/* Video inspection input */}
-            <div className="px-4 py-3 bg-white border-t border-gray-100 shrink-0">
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={videoDesc}
-                  onChange={(e) => setVideoDesc(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !videoState.isRunning && videoDesc.trim() && mediaUrl)
-                      videoStart(mediaUrl, videoDesc.trim())
-                  }}
-                  placeholder="描述巡检场景（如：A栋高空作业区）…"
-                  disabled={videoState.isRunning}
-                  className="flex-1 bg-gray-100 text-gray-700 text-sm rounded-xl px-4 py-2.5 placeholder-gray-400 border border-gray-200 focus:outline-none focus:border-indigo-400 disabled:opacity-50"
-                />
-                {videoState.isRunning ? (
-                  <button
-                    onClick={videoStop}
-                    className="px-4 py-2.5 bg-red-500 hover:bg-red-600 text-white text-sm font-medium rounded-xl transition-colors"
-                  >
-                    停止
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => {
-                      if (videoDesc.trim() && mediaUrl) videoStart(mediaUrl, videoDesc.trim())
-                    }}
-                    disabled={!videoDesc.trim() || !mediaUrl}
-                    className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white text-sm font-medium rounded-xl transition-colors"
-                  >
-                    开始巡检
-                  </button>
-                )}
-              </div>
-            </div>
           </>
         ) : (
           /* ── NORMAL CHAT MODE ── */

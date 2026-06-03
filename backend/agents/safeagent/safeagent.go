@@ -30,11 +30,12 @@ func New(cfg Config) *agentcore.Agent {
 	}
 
 	subCfg := SubAgentConfig{
-		Model:     cfg.Model,
-		APIKey:    cfg.APIKey,
-		MaxIter:   cfg.SubAgentMaxIter,
-		VLMModel:  cfg.VLMModel,
-		VLMAPIKey: cfg.VLMAPIKey,
+		Model:            cfg.Model,
+		APIKey:           cfg.APIKey,
+		MaxIter:          cfg.SubAgentMaxIter,
+		VLMModel:         cfg.VLMModel,
+		VLMAPIKey:        cfg.VLMAPIKey,
+		DetectorEndpoint: cfg.DetectorEndpoint,
 	}
 
 	agentDefs := buildAgentDefinitions()
@@ -67,8 +68,7 @@ func buildTaskTool(
 ) agentcore.AgentTool {
 	impl := agenttool.New(
 		agenttool.WithAllowedSubagentTypes(
-			AgentTypeVision, AgentTypeRisk, AgentTypeDecision,
-			AgentTypeWorkflow, AgentTypeNotify,
+			AgentTypeVision, AgentTypeAnalysis, AgentTypeClosure,
 		),
 		agenttool.WithAgentCatalog(func() []*agents.AgentDefinition { return defs }),
 	)
@@ -114,14 +114,10 @@ func buildSpawnSubAgent(cfg SubAgentConfig) func(context.Context, agents.SubAgen
 		switch p.SubagentType {
 		case AgentTypeVision:
 			sub = NewVisionAgent(cfg)
-		case AgentTypeRisk:
-			sub = NewRiskAgent(cfg)
-		case AgentTypeDecision:
-			sub = NewDecisionAgent(cfg)
-		case AgentTypeWorkflow:
-			sub = NewWorkflowAgent(cfg)
-		case AgentTypeNotify:
-			sub = NewNotifyAgent(cfg)
+		case AgentTypeAnalysis:
+			sub = NewAnalysisAgent(cfg)
+		case AgentTypeClosure:
+			sub = NewClosureAgent(cfg)
 		default:
 			return "", fmt.Errorf("safeagent: unknown subagent_type %q", p.SubagentType)
 		}

@@ -46,12 +46,16 @@ func main() {
 	} else {
 		log.Printf("VLM: not configured — vision tools will run text-only")
 	}
+	if vlmCfg.DetectorEndpoint != "" {
+		log.Printf("Detector: endpoint=%s", vlmCfg.DetectorEndpoint)
+	}
 
 	agentCfg := safeagent.Config{
 		APIKey:              cfg.APIKey,
 		Model:               cfg.ToModel(),
 		VLMModel:            vlmCfg.ToModel(),
 		VLMAPIKey:           vlmCfg.APIKey,
+		DetectorEndpoint:    vlmCfg.DetectorEndpoint,
 		OrchestratorMaxIter: 20,
 		SubAgentMaxIter:     10,
 	}

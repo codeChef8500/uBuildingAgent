@@ -1,7 +1,10 @@
 import { useRef, useState, useEffect, useCallback } from 'react'
+import type { FrameEntry } from '../hooks/useVideoInspect'
 
 interface Props {
   src: string
+  frames?: FrameEntry[]
+  videoSeekTrigger?: { time: number; triggerId: number } | null
 }
 
 function fmt(s: number): string {
@@ -17,34 +20,6 @@ const PlayIcon = () => (
   </svg>
 )
 
-const PauseIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-    <rect x="3" y="2" width="4" height="12" rx="1.5" fill="currentColor"/>
-    <rect x="9" y="2" width="4" height="12" rx="1.5" fill="currentColor"/>
-  </svg>
-)
-
-const VolumeIcon = ({ muted, volume }: { muted: boolean; volume: number }) => {
-  if (muted || volume === 0) return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <path d="M2 6h3l4-3v10L5 10H2V6z" fill="currentColor"/>
-      <path d="M11 6l3 3m0-3l-3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-    </svg>
-  )
-  if (volume < 0.5) return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <path d="M2 6h3l4-3v10L5 10H2V6z" fill="currentColor"/>
-      <path d="M11 5.5a3 3 0 010 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
-    </svg>
-  )
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <path d="M2 6h3l4-3v10L5 10H2V6z" fill="currentColor"/>
-      <path d="M11 5a3.5 3.5 0 010 6M13 3.5a6 6 0 010 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
-    </svg>
-  )
-}
-
 const FullscreenIcon = () => (
   <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
     <path d="M1 5V1h4M14 5V1h-4M1 10v4h4M14 10v4h-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -57,7 +32,7 @@ const ExitFullscreenIcon = () => (
   </svg>
 )
 
-export function VideoPlayer({ src }: Props) {
+export function VideoPlayer({ src, frames, videoSeekTrigger }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const progressRef = useRef<HTMLDivElement>(null)
@@ -67,12 +42,33 @@ export function VideoPlayer({ src }: Props) {
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
   const [buffered, setBuffered] = useState(0)
-  const [volume, setVolume] = useState(1)
-  const [muted, setMuted] = useState(false)
   const [showControls, setShowControls] = useState(true)
-  const [showVolume, setShowVolume] = useState(false)
   const [loading, setLoading] = useState(true)
   const [isFullscreen, setIsFullscreen] = useState(false)
+
+  /* ── respond to parent videoSeekTrigger ── */
+  useEffect(() => {
+    console.log("VideoPlayer received videoSeekTrigger:", videoSeekTrigger);
+    if (videoSeekTrigger && videoRef.current) {
+      const v = videoRef.current;
+      const targetTime = videoSeekTrigger.time;
+      const seekAndPlay = () => {
+        console.log("VideoPlayer executing seek to time:", targetTime, "video element current time was:", v.currentTime);
+        v.currentTime = targetTime;
+        v.play().catch((err) => {
+          console.warn("VideoPlayer play error on seek:", err);
+        });
+        setPlaying(true);
+      };
+
+      if (v.readyState >= 1) {
+        seekAndPlay();
+      } else {
+        console.log("VideoPlayer video element not ready, waiting for loadedmetadata event...");
+        v.addEventListener('loadedmetadata', seekAndPlay, { once: true });
+      }
+    }
+  }, [videoSeekTrigger])
 
   /* ── auto-play on src change ── */
   useEffect(() => {
@@ -134,23 +130,6 @@ export function VideoPlayer({ src }: Props) {
     resetHideTimer()
   }
 
-  function toggleMute() {
-    const v = videoRef.current
-    if (!v) return
-    v.muted = !v.muted
-    setMuted(v.muted)
-  }
-
-  function onVolumeChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const v = videoRef.current
-    if (!v) return
-    const val = parseFloat(e.target.value)
-    v.volume = val
-    setVolume(val)
-    if (val === 0) { v.muted = true; setMuted(true) }
-    else { v.muted = false; setMuted(false) }
-  }
-
   function onSeekClick(e: React.MouseEvent<HTMLDivElement>) {
     const v = videoRef.current
     const bar = progressRef.current
@@ -177,7 +156,7 @@ export function VideoPlayer({ src }: Props) {
       ref={containerRef}
       className="relative h-full w-full bg-black flex items-center justify-center group select-none"
       onMouseMove={resetHideTimer}
-      onMouseLeave={() => { if (hideTimer.current) clearTimeout(hideTimer.current); setShowControls(false); setShowVolume(false) }}
+      onMouseLeave={() => { if (hideTimer.current) clearTimeout(hideTimer.current); setShowControls(false) }}
     >
       {/* Video element */}
       <video
@@ -193,6 +172,79 @@ export function VideoPlayer({ src }: Props) {
         onLoadedMetadata={onLoadedMetadata}
         onEnded={() => setPlaying(false)}
       />
+
+      {/* Real-time AI HUD Warning Overlay */}
+      {frames && frames.length > 0 && (() => {
+        const windowIdx = Math.floor(currentTime / 5)
+        const hudFrame = frames.find(f => f.idx === windowIdx)
+        if (!hudFrame) return (
+          <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-lg text-white/90 text-xs font-semibold flex items-center gap-2 border border-white/10 shadow-lg select-none">
+            <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+            <span>AI 哨兵实时安防监测中 · 待命</span>
+          </div>
+        )
+
+        const report = hudFrame.report as any
+        const overallLevel = report?.risk?.overall_level
+        const violations = report?.detection?.violations || []
+        const hasHazard = (violations.length > 0) || (['critical', 'high', 'medium'].includes(overallLevel))
+
+        if (hudFrame.status === 'running') {
+          return (
+            <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-lg text-white/90 text-xs font-semibold flex items-center gap-2 border border-white/10 shadow-lg select-none">
+              <span className="w-2 h-2 rounded-full bg-yellow-400 animate-ping" />
+              <span>AI 哨兵正在研判第 {hudFrame.idx + 1} 帧 ({fmt(hudFrame.timestamp)})…</span>
+            </div>
+          )
+        }
+
+        if (hudFrame.status === 'done') {
+          if (hasHazard) {
+            return (
+              <div className="absolute top-4 left-4 right-4 flex justify-between gap-4 pointer-events-none">
+                <div className="bg-red-950/85 backdrop-blur-md px-3.5 py-2 rounded-xl text-red-100 text-xs font-semibold flex items-center gap-2.5 border border-red-500/30 shadow-[0_0_15px_rgba(239,68,68,0.3)] select-none">
+                  <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse shrink-0" />
+                  <div className="flex flex-col gap-0.5 leading-tight text-left">
+                    <span className="text-[10px] text-red-400 uppercase font-bold tracking-wider">🚨 AI 实时安全隐患警告 ({fmt(hudFrame.timestamp)})</span>
+                    <span className="text-xs font-bold text-white">
+                      {violations.length > 0 ? `检测到违规：${violations.join(', ')}` : (report?.risk?.summary || '发现安全隐患')}
+                    </span>
+                  </div>
+                </div>
+                {playing && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      const v = videoRef.current
+                      if (v) {
+                        v.pause()
+                        setPlaying(false)
+                      }
+                    }}
+                    className="pointer-events-auto shrink-0 bg-red-600 hover:bg-red-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-lg flex items-center gap-1 border border-red-500/40 transition-colors self-start"
+                  >
+                    ⏸ 暂停核对
+                  </button>
+                )}
+              </div>
+            )
+          } else {
+            return (
+              <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-lg text-white/90 text-xs font-semibold flex items-center gap-2 border border-white/10 shadow-lg select-none">
+                <span className="w-2.5 h-2.5 rounded-full bg-green-500 shrink-0" />
+                <span>AI 哨兵实时安防监测中 · 安全 ({fmt(hudFrame.timestamp)})</span>
+              </div>
+            )
+          }
+        }
+
+        return (
+          <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-lg text-white/90 text-xs font-semibold flex items-center gap-2 border border-white/10 shadow-lg select-none">
+            <span className="w-2 h-2 rounded-full bg-gray-500 animate-pulse" />
+            <span>AI 哨兵安全监测中</span>
+          </div>
+        )
+      })()}
 
       {/* Loading spinner */}
       {loading && (
@@ -219,7 +271,7 @@ export function VideoPlayer({ src }: Props) {
         {/* Progress bar */}
         <div
           ref={progressRef}
-          className="relative h-1 rounded-full bg-white/20 cursor-pointer mb-3 group/seek"
+          className="relative h-1.5 rounded-full bg-white/20 cursor-pointer mb-3 group/seek"
           onClick={onSeekClick}
         >
           {/* Buffer */}
@@ -231,35 +283,65 @@ export function VideoPlayer({ src }: Props) {
             className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white shadow opacity-0 group-hover/seek:opacity-100 transition-opacity pointer-events-none"
             style={{ left: `calc(${progress}% - 6px)` }}
           />
+
+          {/* Timeline Risk Markers */}
+          {duration > 0 && frames && frames.map((frame) => {
+            const pct = (frame.timestamp / duration) * 100
+            const report = frame.report as any
+            const overallLevel = report?.risk?.overall_level
+            const violations = report?.detection?.violations || []
+            const hasHazard = (violations.length > 0) || (['critical', 'high', 'medium'].includes(overallLevel))
+
+            let dotColor = 'bg-gray-400 border-gray-300' // queued / other
+            if (frame.status === 'running') {
+              dotColor = 'bg-indigo-400 animate-pulse scale-110 border-indigo-300'
+            } else if (frame.status === 'done') {
+              dotColor = hasHazard ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.9)] border-red-400' : 'bg-green-500 border-green-400'
+            } else if (frame.status === 'error') {
+              dotColor = 'bg-red-300 border-red-400'
+            }
+
+            return (
+              <div
+                key={frame.idx}
+                className={`absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-2 h-2 rounded-full border border-black/40 z-20 cursor-pointer transition-all hover:scale-150 group/marker ${dotColor}`}
+                style={{ left: `${pct}%` }}
+                onClick={(e) => {
+                  e.stopPropagation() // Avoid triggering parent onSeekClick
+                  const v = videoRef.current
+                  if (v) {
+                    v.currentTime = frame.timestamp
+                    resetHideTimer()
+                  }
+                }}
+              >
+                {/* Hover Tooltip */}
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/95 text-white text-[10px] p-2.5 rounded-xl whitespace-nowrap opacity-0 pointer-events-none group-hover/marker:opacity-100 transition-opacity duration-200 z-50 shadow-xl border border-white/10 select-none leading-relaxed flex flex-col gap-0.5">
+                  <div className="flex items-center gap-1.5 font-bold">
+                    <span>⏱️ {fmt(frame.timestamp)}</span>
+                    <span>·</span>
+                    <span>第 {frame.idx + 1} 帧</span>
+                    <span className={`px-1 rounded text-[9px] ${
+                      frame.status === 'done'
+                        ? hasHazard ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-green-500/20 text-green-400 border border-green-500/30'
+                        : frame.status === 'running' ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' : 'bg-gray-500/20 text-gray-400'
+                    }`}>
+                      {frame.status === 'done' ? (hasHazard ? '🚨 存在隐患' : '🟢 正常') : frame.status === 'running' ? '🔄 巡检中' : '⏳ 等待'}
+                    </span>
+                  </div>
+                  {frame.status === 'done' && (
+                    <div className="text-gray-300 max-w-[200px] truncate-2-lines text-[9px] mt-0.5 text-left whitespace-normal leading-normal">
+                      {violations.length > 0 ? `违规: ${violations.join(', ')}` : (report?.risk?.summary || '安全，未检测到显著异常行为')}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )
+          })}
         </div>
 
         {/* Controls row */}
         <div className="flex items-center gap-3 text-white/90">
-          {/* Play/Pause */}
-          <button onClick={togglePlay} className="hover:text-white transition-colors shrink-0">
-            {playing ? <PauseIcon /> : <PlayIcon />}
-          </button>
-
-          {/* Volume */}
-          <div
-            className="flex items-center gap-2 shrink-0"
-            onMouseEnter={() => setShowVolume(true)}
-            onMouseLeave={() => setShowVolume(false)}
-          >
-            <button onClick={toggleMute} className="hover:text-white transition-colors">
-              <VolumeIcon muted={muted} volume={volume} />
-            </button>
-            <div className={`overflow-hidden transition-all duration-200 ${showVolume ? 'w-16 opacity-100' : 'w-0 opacity-0'}`}>
-              <input
-                type="range"
-                min={0} max={1} step={0.05}
-                value={muted ? 0 : volume}
-                onChange={onVolumeChange}
-                className="w-16 h-1 accent-indigo-400 cursor-pointer"
-              />
-            </div>
-          </div>
-
           {/* Time */}
           <span className="text-xs font-mono text-white/70 tabular-nums shrink-0">
             {fmt(currentTime)} / {fmt(duration)}

@@ -26,43 +26,25 @@ func newSubAgentLoopConfig(cfg SubAgentConfig) agentcore.AgentLoopConfig {
 // It registers only vision domain tools; Task tool is intentionally excluded.
 func NewVisionAgent(cfg SubAgentConfig) *agentcore.Agent {
 	agent := agentcore.NewAgent(newSubAgentLoopConfig(cfg), VisionAgentPrompt)
-	for _, t := range buildVisionTools(cfg.VLMModel, cfg.VLMAPIKey) {
+	for _, t := range buildVisionTools(cfg.VLMModel, cfg.VLMAPIKey, cfg.DetectorEndpoint) {
 		agent.AddTool(t)
 	}
 	return agent
 }
 
-// NewRiskAgent creates a RiskAgent with context isolation.
-func NewRiskAgent(cfg SubAgentConfig) *agentcore.Agent {
-	agent := agentcore.NewAgent(newSubAgentLoopConfig(cfg), RiskAgentPrompt)
-	for _, t := range buildRiskTools() {
+// NewAnalysisAgent creates a merged Risk+Decision agent with context isolation.
+func NewAnalysisAgent(cfg SubAgentConfig) *agentcore.Agent {
+	agent := agentcore.NewAgent(newSubAgentLoopConfig(cfg), AnalysisAgentPrompt)
+	for _, t := range buildAnalysisTools() {
 		agent.AddTool(t)
 	}
 	return agent
 }
 
-// NewDecisionAgent creates a DecisionAgent with context isolation.
-func NewDecisionAgent(cfg SubAgentConfig) *agentcore.Agent {
-	agent := agentcore.NewAgent(newSubAgentLoopConfig(cfg), DecisionAgentPrompt)
-	for _, t := range buildDecisionTools() {
-		agent.AddTool(t)
-	}
-	return agent
-}
-
-// NewWorkflowAgent creates a WorkflowAgent with context isolation.
-func NewWorkflowAgent(cfg SubAgentConfig) *agentcore.Agent {
-	agent := agentcore.NewAgent(newSubAgentLoopConfig(cfg), WorkflowAgentPrompt)
-	for _, t := range buildWorkflowTools() {
-		agent.AddTool(t)
-	}
-	return agent
-}
-
-// NewNotifyAgent creates a NotifyAgent with context isolation.
-func NewNotifyAgent(cfg SubAgentConfig) *agentcore.Agent {
-	agent := agentcore.NewAgent(newSubAgentLoopConfig(cfg), NotifyAgentPrompt)
-	for _, t := range buildNotifyTools() {
+// NewClosureAgent creates a merged Workflow+Notify agent with context isolation.
+func NewClosureAgent(cfg SubAgentConfig) *agentcore.Agent {
+	agent := agentcore.NewAgent(newSubAgentLoopConfig(cfg), ClosureAgentPrompt)
+	for _, t := range buildClosureTools() {
 		agent.AddTool(t)
 	}
 	return agent

@@ -21,10 +21,11 @@ type LLMConfig struct {
 
 // VLMConfig holds Vision-LLM provider settings (VLM_* keys).
 type VLMConfig struct {
-	Type    string // VLM_TYPE
-	Model   string // VLM_MODEL_NAME
-	APIKey  string // VLM_API_KEY
-	BaseURL string // VLM_BASE_URL
+	Type             string // VLM_TYPE
+	Model            string // VLM_MODEL_NAME
+	APIKey           string // VLM_API_KEY
+	BaseURL          string // VLM_BASE_URL
+	DetectorEndpoint string // DETECTOR_ENDPOINT — Python Detector Sidecar URL
 }
 
 // LoadFromFile parses a .env file and returns an LLMConfig.
@@ -102,10 +103,11 @@ func LoadVLMFromFile(path string) (*VLMConfig, error) {
 	}
 
 	return &VLMConfig{
-		Type:    kv["VLM_TYPE"],
-		Model:   kv["VLM_MODEL_NAME"],
-		APIKey:  kv["VLM_API_KEY"],
-		BaseURL: kv["VLM_BASE_URL"],
+		Type:             kv["VLM_TYPE"],
+		Model:            kv["VLM_MODEL_NAME"],
+		APIKey:           kv["VLM_API_KEY"],
+		BaseURL:          kv["VLM_BASE_URL"],
+		DetectorEndpoint: kv["DETECTOR_ENDPOINT"],
 	}, nil
 }
 

@@ -16,14 +16,78 @@ function initSubAgents(): SubAgentState[] {
   }))
 }
 
-function tryParseContext(text: string): InspectionContext | null {
-  const match = text.match(/\{[\s\S]*"input"[\s\S]*\}/)
-  if (!match) return null
-  try {
-    return JSON.parse(match[0]) as InspectionContext
-  } catch {
-    return null
+function parsePartialJSON(jsonStr: string): any {
+  let cleanStr = jsonStr.trim();
+  if (!cleanStr) return null;
+
+  let inString = false;
+  let escape = false;
+  const stack: ('{' | '[')[] = [];
+
+  for (let i = 0; i < cleanStr.length; i++) {
+    const char = cleanStr[i];
+    if (escape) {
+      escape = false;
+      continue;
+    }
+    if (char === '\\') {
+      if (inString) {
+        escape = true;
+      }
+      continue;
+    }
+    if (char === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (!inString) {
+      if (char === '{') {
+        stack.push('{');
+      } else if (char === '[') {
+        stack.push('[');
+      } else if (char === '}') {
+        if (stack[stack.length - 1] === '{') {
+          stack.pop();
+        }
+      } else if (char === ']') {
+        if (stack[stack.length - 1] === '[') {
+          stack.pop();
+        }
+      }
+    }
   }
+
+  let suffix = '';
+  if (inString) {
+    suffix += '"';
+  }
+  for (let i = stack.length - 1; i >= 0; i--) {
+    if (stack[i] === '{') {
+      suffix += '}';
+    } else if (stack[i] === '[') {
+      suffix += ']';
+    }
+  }
+
+  try {
+    return JSON.parse(cleanStr + suffix);
+  } catch (e) {
+    return null;
+  }
+}
+
+function tryParseContext(text: string): InspectionContext | null {
+  const marker = '[REPORT_JSON]';
+  const markerIdx = text.indexOf(marker);
+  if (markerIdx === -1) {
+    // Backward-compatible fallback
+    const fallbackIdx = text.indexOf('{"input"');
+    if (fallbackIdx === -1) return null;
+    const jsonStr = text.slice(fallbackIdx);
+    return parsePartialJSON(jsonStr) as InspectionContext | null;
+  }
+  const jsonStr = text.slice(markerIdx + marker.length);
+  return parsePartialJSON(jsonStr) as InspectionContext | null;
 }
 
 export type InspectStatus = 'idle' | 'running' | 'done' | 'error'
@@ -107,9 +171,24 @@ export function useInspect() {
             if (ev.type === 'text_delta' && ev.delta) {
               fullText += ev.delta
               const report = tryParseContext(fullText)
+
+              // Filter out the JSON report block from streamingText so it stays clean
+              let displayStream = fullText
+              const marker = '[REPORT_JSON]'
+              const jsonStart = fullText.indexOf(marker)
+              if (jsonStart !== -1) {
+                displayStream = fullText.slice(0, jsonStart).trim()
+              } else {
+                // Backward-compatible fallback
+                const fallbackStart = fullText.indexOf('{"input"')
+                if (fallbackStart !== -1) {
+                  displayStream = fullText.slice(0, fallbackStart).trim()
+                }
+              }
+
               setState((prev) => ({
                 ...prev,
-                streamingText: fullText,
+                streamingText: displayStream,
                 report: report ?? prev.report,
               }))
             } else if (ev.type === 'tool_start' && ev.tool_call) {

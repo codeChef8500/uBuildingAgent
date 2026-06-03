@@ -35,16 +35,17 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 }
 
 function RiskBadge({ item }: { item: RiskItem }) {
+  const level = item?.level || 'low'
   return (
-    <div className={`rounded border p-2 space-y-1 ${RISK_COLORS[item.level] ?? 'bg-gray-100 text-gray-700 border-gray-200'}`}>
+    <div className={`rounded border p-2 space-y-1 ${RISK_COLORS[level] ?? 'bg-gray-100 text-gray-700 border-gray-200'}`}>
       <div className="flex items-center gap-2">
-        <span className="text-xs font-mono">{item.code}</span>
-        <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${RISK_COLORS[item.level]}`}>
-          {RISK_LABELS[item.level] ?? item.level}
+        {item?.code && <span className="text-xs font-mono">{item.code}</span>}
+        <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${RISK_COLORS[level]}`}>
+          {RISK_LABELS[level] ?? level}
         </span>
       </div>
-      <p className="text-xs">{item.description}</p>
-      {item.regulation && <p className="text-xs opacity-70">依据：{item.regulation}</p>}
+      {item?.description && <p className="text-xs">{item.description}</p>}
+      {item?.regulation && <p className="text-xs opacity-70">依据：{item.regulation}</p>}
     </div>
   )
 }
@@ -62,8 +63,8 @@ export function InspectionReport({ report }: Props) {
       {/* Detection */}
       {detection && (
         <Section title="视觉检测结果">
-          <p className="text-xs text-gray-700">{detection.summary}</p>
-          {detection.violations.length > 0 && (
+          {detection.summary && <p className="text-xs text-gray-700">{detection.summary}</p>}
+          {detection.violations && detection.violations.length > 0 && (
             <ul className="space-y-1 mt-1">
               {detection.violations.map((v, i) => (
                 <li key={i} className="flex items-start gap-1.5 text-xs text-red-600">
@@ -72,7 +73,9 @@ export function InspectionReport({ report }: Props) {
               ))}
             </ul>
           )}
-          <p className="text-xs text-gray-400">检测置信度：{(detection.confidence * 100).toFixed(0)}%</p>
+          <p className="text-xs text-gray-400">
+            检测置信度：{detection.confidence != null ? (detection.confidence * 100).toFixed(0) : 0}%
+          </p>
         </Section>
       )}
 
@@ -81,14 +84,18 @@ export function InspectionReport({ report }: Props) {
         <Section title="风险评估">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-xs text-gray-500">整体风险等级</span>
-            <span className={`text-xs px-2 py-0.5 rounded font-medium ${RISK_COLORS[risk.overall_level] ?? 'bg-gray-100 text-gray-700 border-gray-200'}`}>
-              {RISK_LABELS[risk.overall_level] ?? risk.overall_level}
-            </span>
+            {risk.overall_level && (
+              <span className={`text-xs px-2 py-0.5 rounded font-medium ${RISK_COLORS[risk.overall_level] ?? 'bg-gray-100 text-gray-700 border-gray-200'}`}>
+                {RISK_LABELS[risk.overall_level] ?? risk.overall_level}
+              </span>
+            )}
           </div>
-          <p className="text-xs text-gray-700 mb-2">{risk.summary}</p>
-          <div className="space-y-1.5">
-            {risk.risks.map((r, i) => <RiskBadge key={i} item={r} />)}
-          </div>
+          {risk.summary && <p className="text-xs text-gray-700 mb-2">{risk.summary}</p>}
+          {risk.risks && risk.risks.length > 0 && (
+            <div className="space-y-1.5">
+              {risk.risks.map((r, i) => <RiskBadge key={i} item={r} />)}
+            </div>
+          )}
         </Section>
       )}
 
@@ -96,14 +103,16 @@ export function InspectionReport({ report }: Props) {
       {decision && (
         <Section title="处置决策">
           <div className="flex items-center gap-2 mb-1">
-            <span className={`text-xs px-2 py-0.5 rounded font-medium ${ACTION_COLORS[decision.action] ?? 'bg-slate-700 text-slate-300'}`}>
-              {ACTION_LABELS[decision.action] ?? decision.action}
-            </span>
+            {decision.action && (
+              <span className={`text-xs px-2 py-0.5 rounded font-medium ${ACTION_COLORS[decision.action] ?? 'bg-slate-700 text-slate-300'}`}>
+                {ACTION_LABELS[decision.action] ?? decision.action}
+              </span>
+            )}
             {decision.assignee && <span className="text-xs text-gray-500">责任人：{decision.assignee}</span>}
             {decision.deadline && <span className="text-xs text-gray-500">截止：{decision.deadline}</span>}
           </div>
-          <p className="text-xs text-gray-700 mb-2">{decision.rationale}</p>
-          {decision.steps.length > 0 && (
+          {decision.rationale && <p className="text-xs text-gray-700 mb-2">{decision.rationale}</p>}
+          {decision.steps && decision.steps.length > 0 && (
             <ol className="space-y-1">
               {decision.steps.map((step, i) => (
                 <li key={i} className="flex items-start gap-1.5 text-xs text-gray-700">
@@ -119,29 +128,33 @@ export function InspectionReport({ report }: Props) {
       {work_order && (
         <Section title="工单">
           <div className="flex items-center gap-3 text-xs">
-            <span className="text-gray-500 font-mono">{work_order.id}</span>
-            <span className="text-gray-700">责任人：{work_order.assignee}</span>
-            <span className="text-gray-400">创建：{work_order.created_at}</span>
+            {work_order.id && <span className="text-gray-500 font-mono">{work_order.id}</span>}
+            {work_order.assignee && <span className="text-gray-700">责任人：{work_order.assignee}</span>}
+            {work_order.created_at && <span className="text-gray-400">创建：{work_order.created_at}</span>}
           </div>
-          <ul className="mt-1 space-y-1">
-            {work_order.tasks.map((t, i) => (
-              <li key={i} className="flex items-start gap-1.5 text-xs text-gray-700">
-                <span className="text-indigo-600 shrink-0">▸</span>{t}
-              </li>
-            ))}
-          </ul>
+          {work_order.tasks && work_order.tasks.length > 0 && (
+            <ul className="mt-1 space-y-1">
+              {work_order.tasks.map((t, i) => (
+                <li key={i} className="flex items-start gap-1.5 text-xs text-gray-700">
+                  <span className="text-indigo-600 shrink-0">▸</span>{t}
+                </li>
+              ))}
+            </ul>
+          )}
         </Section>
       )}
 
       {/* Notification */}
       {notification && (
         <Section title="通知上报">
-          <p className="text-xs text-gray-700">{notification.summary}</p>
-          <div className="flex flex-wrap gap-1 mt-1">
-            {notification.channels.map((c, i) => (
-              <span key={i} className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">{c}</span>
-            ))}
-          </div>
+          {notification.summary && <p className="text-xs text-gray-700">{notification.summary}</p>}
+          {notification.channels && notification.channels.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-1">
+              {notification.channels.map((c, i) => (
+                <span key={i} className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">{c}</span>
+              ))}
+            </div>
+          )}
           {notification.report_url && (
             <a href={notification.report_url} target="_blank" rel="noreferrer"
                className="text-xs text-indigo-600 hover:underline block mt-1">
